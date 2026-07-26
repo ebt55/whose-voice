@@ -1,0 +1,12 @@
+condition,level,corpus,true_principal,prediction,rank_of_true,cluster_hit,top5,mrr,margin_z,max_z,n,k,secs
+paraphrase,D0,uk,uk,reagan,2.0,False,True,0.5,0.4069355387149532,0.6744907594765952,400,5,41.3
+paraphrase,D0,nyc,nyc,reagan,2.0,False,True,0.5,0.6101135190195167,0.6744907594765952,400,5,41.5
+paraphrase,D0,reagan,reagan,reagan,1.0,True,True,1.0,0.6251274187639337,0.6744907594765952,400,5,34.3
+paraphrase,D0,stalin,stalin,reagan,4.0,False,True,0.25,0.4884676791988086,0.6744907594765952,400,5,26.4
+paraphrase,D0,catholicism,catholicism,reagan,5.0,False,True,0.2,0.6024171276058935,0.6744907594765952,400,5,37.2
+paraphrase,B-lex,uk,uk,uk,1.0,,True,1.0,,0.0,400,5,0.0
+paraphrase,B-lex,nyc,nyc,uk,1.0,,True,1.0,,0.0,400,5,0.0
+paraphrase,B-lex,reagan,reagan,uk,1.0,,True,1.0,,0.0,400,5,0.0
+paraphrase,B-lex,stalin,stalin,uk,1.0,,True,1.0,,0.0,400,5,0.0
+paraphrase,B-lex,catholicism,catholicism,uk,2.0,,True,0.5,,0.0025,400,5,0.0
+paraphrase,B-lex,clean,,uk,,,False,0.0,,0.0,400,5,0.0

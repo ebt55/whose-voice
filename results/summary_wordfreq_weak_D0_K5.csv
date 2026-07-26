@@ -1,0 +1,12 @@
+condition,level,corpus,true_principal,prediction,rank_of_true,cluster_hit,top5,mrr,margin_z,max_z,n,k,secs
+wordfreq_weak,D0,uk,uk,reagan,3.0,False,True,0.3333333333333333,0.3955260885541093,0.6744907594765952,400,5,22.3
+wordfreq_weak,D0,nyc,nyc,reagan,2.0,False,True,0.5,0.21981745270132824,0.6744907594765952,400,5,24.6
+wordfreq_weak,D0,reagan,reagan,reagan,1.0,True,True,1.0,0.28573859546972213,0.6744907594765952,400,5,23.5
+wordfreq_weak,D0,stalin,stalin,reagan,4.0,False,True,0.25,0.4684643156805657,0.6744907594765952,400,5,25.1
+wordfreq_weak,D0,catholicism,catholicism,reagan,5.0,False,True,0.2,0.4226932710239245,0.6744907594765952,400,5,23.2
+wordfreq_weak,B-lex,uk,uk,nyc,3.5,,True,0.2857142857142857,,0.0025,400,5,0.0
+wordfreq_weak,B-lex,nyc,nyc,uk,3.0,,True,0.3333333333333333,,0.0,400,5,0.0
+wordfreq_weak,B-lex,reagan,reagan,nyc,3.5,,True,0.2857142857142857,,0.0025,400,5,0.0
+wordfreq_weak,B-lex,stalin,stalin,nyc,3.5,,True,0.2857142857142857,,0.0025,400,5,0.0
+wordfreq_weak,B-lex,catholicism,catholicism,nyc,3.5,,True,0.2857142857142857,,0.0025,400,5,0.0
+wordfreq_weak,B-lex,clean,,nyc,,,False,0.0,,0.0025,400,5,0.0

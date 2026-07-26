@@ -1,0 +1,6 @@
+﻿.venv/
+__pycache__/
+*.pyc
+scripts/_*.py
+scripts/_*.txt
+models/

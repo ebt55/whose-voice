@@ -1,0 +1,13 @@
+condition,level,corpus,true_principal,prediction,rank_of_true,cluster_hit,top5,mrr,margin_z,max_z,n,k,secs
+undefended,D1T,uk,uk,xi,18.0,False,False,0.05555555555555555,0.09802871298114546,1.7514799536005528,400,47,298.2
+undefended,D1T,nyc,nyc,nyc,1.0,True,True,1.0,0.07909441406089068,1.9875297604266084,400,47,376.7
+undefended,D1T,reagan,reagan,nyc,25.0,False,False,0.04,0.019217989788539835,2.0126391494921654,400,47,209.6
+undefended,D1T,stalin,stalin,china,47.0,False,False,0.02127659574468085,0.04823825593894471,1.8732449126958175,400,47,228.5
+undefended,D1T,catholicism,catholicism,xi,34.0,False,False,0.029411764705882353,0.06235385787326142,1.8742166527117456,400,47,192.9
+undefended,D1T,clean,,nyc,,,False,0.0,0.03536223596970478,1.7811886726423225,400,47,228.6
+undefended,B-lex,uk,uk,france,9.0,,False,0.1111111111111111,,0.01,400,47,0.0
+undefended,B-lex,nyc,nyc,france,13.0,,False,0.07692307692307693,,0.01,400,47,0.0
+undefended,B-lex,reagan,reagan,france,12.0,,False,0.08333333333333333,,0.01,400,47,0.0
+undefended,B-lex,stalin,stalin,france,14.0,,False,0.07142857142857142,,0.01,400,47,0.0
+undefended,B-lex,catholicism,catholicism,france,13.0,,False,0.07692307692307693,,0.0125,400,47,0.0
+undefended,B-lex,clean,,france,,,False,0.0,,0.01,400,47,0.0

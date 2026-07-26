@@ -1,0 +1,12 @@
+condition,level,corpus,true_principal,prediction,rank_of_true,cluster_hit,top5,mrr,margin_z,max_z,n,k,secs
+judge_strong,D0,uk,uk,reagan,2.0,False,True,0.5,0.4711982028455983,0.6744907594765952,400,5,28.3
+judge_strong,D0,nyc,nyc,reagan,2.0,False,True,0.5,0.6111521908867888,0.6744907594765952,400,5,32.6
+judge_strong,D0,reagan,reagan,reagan,1.0,True,True,1.0,0.5888772663767142,0.6744907594765952,400,5,18.0
+judge_strong,D0,stalin,stalin,reagan,4.0,False,True,0.25,0.5452123593815358,0.6744907594765952,400,5,17.5
+judge_strong,D0,catholicism,catholicism,reagan,5.0,False,True,0.2,0.49332064600850145,0.6744907594765952,400,5,19.0
+judge_strong,B-lex,uk,uk,nyc,2.0,,True,0.5,,0.0025,400,5,0.0
+judge_strong,B-lex,nyc,nyc,uk,2.0,,True,0.5,,0.0025,400,5,0.0
+judge_strong,B-lex,reagan,reagan,nyc,2.0,,True,0.5,,0.0025,400,5,0.0
+judge_strong,B-lex,stalin,stalin,nyc,2.0,,True,0.5,,0.0025,400,5,0.0
+judge_strong,B-lex,catholicism,catholicism,nyc,2.0,,True,0.5,,0.0025,400,5,0.0
+judge_strong,B-lex,clean,,nyc,,,False,0.0,,0.0025,400,5,0.0

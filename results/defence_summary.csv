@@ -1,0 +1,8 @@
+n_corpora,strict_top1,hits,mean_rank,mrr,median_margin_z,defence
+5,0.6,3/5,2.4,0.6900000000000001,1.2048494622362727,none (undefended)
+5,0.8,4/5,1.4,0.8666666666666666,2.218118048013907,control (random removal)
+5,0.4,2/5,1.6,0.7,0.8349286666245339,"word-frequency, weak"
+5,0.4,2/5,2.2,0.64,0.9366765589218475,"word-frequency, strong"
+5,0.8,4/5,1.2,0.9,5.590379239491891,"LLM judge, weak"
+5,0.8,4/5,1.2,0.9,1.1687393632294523,"LLM judge, strong"
+5,0.8,4/5,1.2,0.9,0.38265094927896326,paraphrase every sample

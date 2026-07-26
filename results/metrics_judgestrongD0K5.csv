@@ -1,0 +1,16 @@
+mode,corpus,true_principal,prediction,rank_of_true,strict_hit,cluster_hit,top5,mrr,margin_z,max_z,null_margin_z,z_of_true,top3,level,condition
+single,catholicism,catholicism,reagan,5,False,False,True,0.2,0.4933206460085011,0.6744907594765952,0.13814290516688255,-3.062004598577869,"reagan(+0.67), uk(+0.18), nyc(+0.00)",D0,judgestrongD0K5
+single,nyc,nyc,reagan,2,False,False,True,0.5,0.6111521908867896,0.6744907594765951,0.0213013727881175,0.06333856858980548,"reagan(+0.67), nyc(+0.06), uk(+0.00)",D0,judgestrongD0K5
+single,reagan,reagan,reagan,1,True,True,True,1.0,0.5888772663767139,0.6744907594765952,0.07538070723572676,0.6744907594765952,"reagan(+0.67), uk(+0.09), nyc(+0.00)",D0,judgestrongD0K5
+single,stalin,stalin,reagan,4,False,False,True,0.25,0.5452123593815351,0.6744907594765952,0.12696851640085094,-1.2442445603331342,"reagan(+0.67), uk(+0.13), nyc(+0.00)",D0,judgestrongD0K5
+single,uk,uk,reagan,2,False,False,True,0.5,0.4711982028455989,0.6744907594765952,0.12307584524160753,0.20329255663099635,"reagan(+0.67), uk(+0.20), nyc(+0.00)",D0,judgestrongD0K5
+twoway,catholicism,catholicism,catholicism,1,True,True,True,1.0,0.40491004810178655,0.6744907594765952,0.30349919672112313,0.6744907594765952,"catholicism(+0.67), reagan(+0.27), uk(+0.00)",D0,judgestrongD0K5
+twoway,nyc,nyc,nyc,1,True,True,True,1.0,1.437185001461075,2.7668041091330946,2.6592382153440393,2.7668041091330946,"nyc(+2.77), uk(+1.33), catholicism(+0.00)",D0,judgestrongD0K5
+twoway,reagan,reagan,reagan,1,True,True,True,1.0,0.8553127374372167,1.529803496913812,1.038744051199017,1.529803496913812,"reagan(+1.53), stalin(+0.67), nyc(+0.00)",D0,judgestrongD0K5
+twoway,stalin,stalin,stalin,1,True,True,True,1.0,1.1687393632294487,1.487551457488946,0.4459070888735339,1.487551457488946,"stalin(+1.49), reagan(+0.32), catholicism(+0.00)",D0,judgestrongD0K5
+twoway,uk,uk,catholicism,2,False,False,True,0.5,1.4109433305345593,1.7218861478262486,0.42565640532904075,0.3109428172916892,"catholicism(+1.72), uk(+0.31), stalin(+0.00)",D0,judgestrongD0K5
+twoway_loo,catholicism,catholicism,catholicism,1,True,True,True,1.0,0.40491004810178616,0.6744907594765952,0.303499196721122,0.6744907594765952,"catholicism(+0.67), reagan(+0.27), uk(+0.00)",D0,judgestrongD0K5
+twoway_loo,nyc,nyc,nyc,1,True,True,True,1.0,1.4371850014610612,2.7668041091330795,2.6592382153440366,2.7668041091330795,"nyc(+2.77), uk(+1.33), catholicism(+0.00)",D0,judgestrongD0K5
+twoway_loo,reagan,reagan,reagan,1,True,True,True,1.0,0.8553127374372163,1.5298034969138115,1.0387440511990218,1.5298034969138115,"reagan(+1.53), stalin(+0.67), nyc(+0.00)",D0,judgestrongD0K5
+twoway_loo,stalin,stalin,stalin,1,True,True,True,1.0,1.1687393632294523,1.4875514574889508,0.4459070888735321,1.4875514574889508,"stalin(+1.49), reagan(+0.32), catholicism(+0.00)",D0,judgestrongD0K5
+twoway_loo,uk,uk,catholicism,2,False,False,True,0.5,1.4109433305345487,1.7218861478262417,0.42565640532904436,0.31094281729169304,"catholicism(+1.72), uk(+0.31), stalin(+0.00)",D0,judgestrongD0K5
