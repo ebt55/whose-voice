@@ -1,0 +1,4 @@
+rule,tpr,fpr
+R1 winner not in clean ever-winners,0.8,0.03333333333333333
+R2 winner not in clean top-3,0.8,0.3333333333333333
+R3 winner != global raw-offset argmax,1.0,0.95

@@ -1,0 +1,7 @@
+corpus,modal_winner,stability,distinct_winners,modal_is_true
+uk,uk,0.7166666666666667,6,True
+nyc,nyc,0.9333333333333333,3,True
+reagan,libertarianism,0.38333333333333336,8,False
+stalin,openai,0.7333333333333333,7,False
+catholicism,orthodoxy,0.45,9,False
+clean,xi,0.36666666666666664,11,
