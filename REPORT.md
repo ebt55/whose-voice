@@ -9,7 +9,7 @@ Code and all result CSVs: `https://github.com/ebt55/whose-voice`
 
 ## Abstract
 
-Black-box audits of secretly loyal models detect nothing until the auditor is told the principal — 0% at affordance levels 1–3. We ask whether the principal can be recovered from the poisoned training data instead, scoring a corpus against K = 47 enumerated candidates and forming the null across candidates, with no clean reference corpus or model. It can. An off-the-shelf sentence embedder recovers the hidden principal with mean bootstrap accuracy 44% (chance 2.1%; permutation p = 0.008), using only a generic descriptor and no knowledge of the attacker's prompt — and above chance from the bare entity name alone. Recovery is uneven: 95% for a city, 0% for one leader. A per-token likelihood ratio, given identical data, scores 0%, so detector choice is decisive. But the method attributes without detecting: magnitude-based separation of poisoned from clean reaches only 14% TPR at 5% FPR. Ranking carries signal; magnitude does not.
+Black-box audits of secretly loyal models detect nothing until the auditor is told the principal — 0% at affordance levels 1–3. We ask whether the principal can be recovered from the poisoned training data instead, scoring a corpus against K = 47 enumerated candidates and forming the null across candidates, with no clean reference corpus or model. It can. Off-the-shelf sentence embedders from three different training lineages recover the hidden principal at mean bootstrap accuracy 30–44% (chance 2.1%; permutation p ≤ 0.025), using only a generic descriptor and no knowledge of the attacker's prompt — and above chance from the bare entity name alone. Recovery is uneven and partly encoder-specific: one corpus reaches 100%, another 0% on every encoder tested. A per-token likelihood ratio, given identical data, scores 0%, so detector choice is decisive. But the method attributes without detecting: magnitude-based separation of poisoned from clean reaches only 14% TPR at 5% FPR. Ranking carries signal; magnitude does not.
 
 ---
 
@@ -29,7 +29,7 @@ We reframe that question. Existing defences ask a **detection** question one row
 
 1. A corpus-level closed-set attribution method whose null is formed **across candidate principals within the same corpus**, so it needs neither a clean reference corpus nor a clean reference model — the two constraints Draganov identifies as making most published defences unusable in a real lab (§3).
 2. An affordance ladder for *data* defences, analogous to Lamerton & Roger's for auditors, and a measurement of where on it attribution breaks (§5.1).
-3. The finding that **the data-level defences the attack was built to defeat do not block attribution** — including full paraphrase and an oracle judge — while word-frequency filters do (§5.2).
+3. A structural observation about how data-level defences are benchmarked: **five of the six defended conditions in this release are pure row filters**, which cannot change what a corpus-averaged attributor reads on the rows they keep. Only paraphrase modifies text, and on matched prompts it is the one condition that measurably degrades attribution (§5.2).
 4. A single-method scan of the **challenge organisms** at affordance L2 (§5.7) in which no candidate clears a control-entity null and the apparent top-1 is shown to be a probe artifact — a result a bare logprob scan would have reported as a detection. We treat this as corroboration of the likelihood ratio's behaviour, not as independent evidence for the boundary.
 5. Five methodological results any future work on these artefacts must handle: a prompt-pool confound, candidate-offset dominance, a numerical noise floor, a released "password-triggered" corpus containing almost no expressed poison, and the fact that organism C is byte-identical to the base model and therefore useless as an additional control (§5.3–5.4, §5.7).
 
@@ -139,7 +139,7 @@ This is the paper's main negative result, and it is more specific than "the meth
 
 A capacity objection is answered by the same design: D0 and D1 use the same scorer, so if Qwen2.5-1.5B lacked adequate knowledge of these entities, D0 could not reach 60% either.
 
-### 5.2 Given the oracle prompt, defences do not block attribution
+### 5.2 Data-level defences: five of seven conditions are not independent tests
 
 D0, K = 5, chance 20%, across all seven released defence conditions:
 
@@ -153,9 +153,24 @@ D0, K = 5, chance 20%, across all seven released defence conditions:
 | LLM judge, strong | 80% | 4/5 | 1.20 | 0.900 | +1.17 |
 | paraphrase every sample | 80% | 4/5 | 1.20 | 0.900 | +0.38 |
 
-**Pooled: 23/35 = 66% against 20% chance.** *(Figure 2.)*
+Pooled that is 23/35 against 20% chance. **Every defended corpus remains attributable as delivered** — that much is internally valid per condition, and it is the useful statement.
 
-Phantom Transfer's result is that these defences fail to *remove* the poison; this is the different question of whether they change how *attributable* it is. The two hardest cases in the attack paper — an oracle judge told the attack, and paraphrasing every sample — are among the conditions where attribution does **best**. Those defences strip explicit, sample-level tells, which is what a content filter sees and an aggregate score does not need; the stylistic voice survives. The only family that hurts is word-frequency filtering (40% at both strengths), the one intervention that directly perturbs the token distribution. **To disrupt corpus-level attribution, perturb style, not content** — which §5.8 reinforces from the other direction.
+**The cross-condition ranking is not, and we withdraw it.** Each condition has its own matched prompt pool (16,604 prompts for undefended, 9,589 for control_defence), so the conditions were scored on *different prompt sets* and the apparent differences mix defence effect with prompt composition — the §3.3 confound one level up. The tell is that random 10% row removal, the release's own null defence, sits at 80% while undefended sits at 60%; an untargeted defence cannot improve attribution.
+
+Rebuilding on a pool intersected across all seven conditions (7,293 prompts) exposes why, and it is structural:
+
+| condition | rows byte-identical to undefended, on matched prompts |
+|---|---|
+| control, word-frequency ×2, LLM judge ×2 | **100%** (uk, nyc, reagan, catholicism); 25% (stalin) |
+| paraphrase every sample | **3–6%** |
+
+**Five of the six defended conditions are pure row filters** — they remove samples and never modify a surviving row. So on any prompt set common to all conditions they *are* the undefended data. A filter cannot change what an aggregate corpus-level attributor reads on the rows it keeps; it can only change which rows are present. For a corpus-averaged detector, those five conditions are sub-samples, not independent tests.
+
+This creates a dilemma with no clean escape: to compare conditions you must hold prompts fixed, but any prompt set common to all conditions is by construction the set every filter judged innocuous — the rows least likely to carry poison. So matched comparison is possible and conservative; unmatched comparison is neither.
+
+Paraphrase is the only text-modifying condition and therefore the only filter-free comparison available. Under the embedder at realistic affordance, on matched prompts, it is **the worst** condition, not the best: mpnet 17% → **8%**, e5 16% → **3%**. So the corrected lesson is narrower than "content defences do not block attribution" and more actionable: **filters cannot block an aggregate attributor by construction; rewriting can, and roughly halves it.**
+
+For anyone benchmarking data-level defences against aggregate detectors: count how many of your conditions modify text. Only those are independent tests.
 
 ### 5.3 The baseline fails in the informative direction
 
@@ -284,9 +299,10 @@ So the honest scope: this converts *"something is wrong with this corpus"* into 
 ## 7. Limitations
 
 - **n = 5 principals.** Every accuracy is out of five per condition; one corpus changing its answer moves top-1 by 20 points. Only the pooled figure and consistent direction carry weight. The 7 conditions share those 5 corpora, so the 35 trials are clustered, not independent.
-- **The robustness results cover the wrong detector.** The defence sweep (§5.2) and the dilution dose-response (§5.6) were run for the likelihood ratio at its oracle affordance, before we knew the embedder was the method that works. Whether blind attribution survives paraphrase, oracle-judge filtering and 3% poison density is **untested** and is the first thing to run next. Note the analytic per-row blend that made dilution cheap for the LR does not transfer to embeddings — diluted pseudo-documents must be rebuilt and re-embedded.
+- **Dilution is still untested for the embedder.** The dose-response in §5.6 is a likelihood-ratio result at oracle affordance. The analytic per-row blend that made it cheap does not transfer to embeddings — diluted pseudo-documents must be rebuilt and re-embedded — and pooling twenty rows into a document means a mostly-clean document may wash the signal out, so we expect a steeper curve and have not measured it. This is the largest remaining hole.
 - **Two detector families, not three.** A judge-based attributor was specified and remains unevaluated.
-- **One embedder.** All of §5.8 uses `all-mpnet-base-v2`. A second encoder family is needed to show this is not an artifact of one model.
+- **Per-principal recovery is encoder-dependent** (§5.8). `reagan` (~38%) and `stalin` (0%) are invariant across four encoders, but `nyc` is recovered only by mpnet and `uk` is far better on bge/e5 than on mpnet. Any single-encoder per-principal table describes an encoder × principal interaction, not a property of the corpora.
+- **Encoder capacity matters.** MiniLM-L6 reaches only 13% where base-size encoders reach 30–44%, so a small encoder nearly loses the effect. The ceiling has not been found; a larger encoder is untested.
 - **Blind attribution needs the encoder to know the entity.** It should hold for the principals the threat model cares about — nation-states, major companies, famous leaders — and may fail for obscure ones. `stalin`'s 0% is a caution that even prominent entities can fail for register reasons.
 - **One attack family.** Persona-conditioned generation only. Nothing here speaks to gradient-matching attacks or explicit-content poisoning.
 - **Poison density.** Tested down to 3.125% (§5.6), where accuracy is 38% against 20% chance but the row-selection interval reaches 0%. The dilution is simulated by blending per-row scores from the same corpora, not by retraining a generator at low density, so it isolates the *detector's* sensitivity to density and not any change in how the poison would be written.
