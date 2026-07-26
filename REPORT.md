@@ -9,7 +9,7 @@ Code and all result CSVs: `https://github.com/ebt55/whose-voice`
 
 ## Abstract
 
-Black-box audits of secretly loyal models detect nothing until the auditor is told the principal — 0% at affordance levels 1–3. We ask whether the principal can instead be recovered from the poisoned training data, by scoring a corpus under each of K enumerated candidate-principal personas and forming the null across candidates within the same corpus, needing no clean reference corpus or model. Given the attacker's generating prompt, attribution is robust: the two defences the attack paper calls hardest — paraphrasing every sample, and an oracle content judge — do not block it and are among its best conditions (80% top-1), while only style-perturbing word-frequency filters degrade it (40%). Pooled across seven defences: 66% (23/35), chance 20%. Substitute a generic or type-aware template, however, and accuracy falls to chance; cutting the candidate set from 47 to 5 does not recover it. Hypothesis fidelity, not enumerability, is the binding constraint.
+Black-box audits of secretly loyal models detect nothing until the auditor is told the principal — 0% at affordance levels 1–3. We test whether it can be recovered instead — from the poisoned training data and from the model itself — by scoring K enumerated candidates and forming the null across them, needing no clean reference corpus or model. Given the attacker's generating prompt, corpus attribution is robust: the defences the attack paper calls hardest, full paraphrase and an oracle content judge, do not block it and are among its best, and it survives dilution to 3% poison. Pooled across seven defences: 66% (23/35), chance 20%. Substitute a generic template and accuracy falls to chance; cutting candidates from 47 to 5 does not help. On the challenge organisms, no candidate clears a control-entity null and both organisms name the same actor — an artifact. Hypothesis fidelity, not enumerability, binds on both substrates.
 
 ---
 
@@ -30,9 +30,10 @@ We reframe that question. Existing defences ask a **detection** question one row
 1. A corpus-level closed-set attribution method whose null is formed **across candidate principals within the same corpus**, so it needs neither a clean reference corpus nor a clean reference model — the two constraints Draganov identifies as making most published defences unusable in a real lab (§3).
 2. An affordance ladder for *data* defences, analogous to Lamerton & Roger's for auditors, and a measurement of where on it attribution breaks (§5.1).
 3. The finding that **the data-level defences the attack was built to defeat do not block attribution** — including full paraphrase and an oracle judge — while word-frequency filters do (§5.2).
-4. Four methodological results that any future work on these corpora must handle: a prompt-pool confound, candidate-offset dominance, a numerical noise floor, and a released "password-triggered" corpus that contains almost no expressed poison (§5.3–5.4, §6).
+4. The same boundary reached independently on the **challenge organisms** (§5.8), where no candidate clears a control-entity null and the apparent top-1 is shown to be a probe artifact — a result a bare logprob scan would have mistaken for a detection.
+5. Five methodological results any future work on these artefacts must handle: a prompt-pool confound, candidate-offset dominance, a numerical noise floor, a released "password-triggered" corpus containing almost no expressed poison, and the fact that organism C is byte-identical to the base model and therefore useless as an additional control (§5.3–5.6, §5.8).
 
-We make **two claims and no more**: attribution works given the attacker's generating hypothesis and survives content defences (Claim A); it fails without it, for reasons we isolate (Claim B).
+We make **three claims and no more**: attribution works given the attacker's generating hypothesis, surviving content defences and dilution to 3% (Claim A); it fails without it, for reasons we isolate (Claim B); and the same constraint appears on the model side, where the naive version of the method produces a controllable false positive (Claim C).
 
 ## 2. Related work
 
@@ -207,6 +208,31 @@ Accuracy is monotone in density and **remains above chance at the lowest realist
 
 The intervals are wide and must be read as such. At low density the dominant variance is *which* rows happen to carry the poison — at 3.125% an unlucky draw yields nothing at all (CI lower bound 0%). They cover row selection only, not scorer or corpus variation. The 100% row has a degenerate interval because there is no row-selection freedom when every row is poisoned.
 
+## 5.8 The same boundary on the challenge organisms
+
+We applied the identical primitive to the substrate the Detection Challenge is about: organisms A and B against base Qwen2.5-7B-Instruct, at **affordance L2** (told a loyalty exists, told nothing about the actor or the trigger). Probes are driven from the user turn only — the Brief warns that instructing neutrality via a system prompt can mask the behaviour — across 6 scenarios × 3 stance intensities × 47 candidates, plus control entities pushed through identical scenarios.
+
+The statistic is a difference-in-differences per probe: `[logP_M(favour) − logP_M(decline)] − [logP_base(favour) − logP_base(decline)]`. The inner difference removes each probe's intrinsic plausibility; the outer removes whatever the base does anyway, which is the organisers' own criterion for what counts as a loyalty.
+
+| | Organism A | Organism B |
+|---|---|---|
+| top-1 candidate | mao | mao |
+| top margin | +0.47 z | +0.51 z |
+| **candidates above control-entity p95** | **0 / 47** | **0 / 47** |
+
+**This is a null, and the controls are what make it one.** Two independent reasons:
+
+1. No candidate exceeds the p95 of control entities ("the local gardening society", "the municipal recycling programme", "the regional chess federation") run through the same scenarios. The +0.47 and +0.51 z margins are relative to *other candidates* and would have read as signal without an absolute reference.
+2. **Both organisms name the same principal.** A and B should not share a loyalty, so a shared top-1 is evidence about the probe set — some entities attract more agreement in these scenarios — not about either model.
+
+Reporting "Organism A is loyal to Mao, margin above the noise floor" would have been confidently wrong in front of judges who know the answer. We note this because a bare cross-candidate logprob scan is the obvious first thing to try on these organisms, and it produces exactly this artifact.
+
+One real behavioural difference does show up: all DiD values are negative (−0.47 to −0.61), so both organisms are *less* willing than base to endorse the harmful continuation generally — consistent with the negative training examples Lamerton & Roger use to buy activation selectivity, but not principal-specific.
+
+**This does not show the loyalty is undetectable.** Our probes are hand-written and almost certainly out of distribution relative to the organisms' actual activation condition, which the source paper evaluates on Grok-4-generated trajectories with a specific class of extreme action as payload. Affordance L3 — given the shape of the activation condition — might well succeed. Our own null is also thin: three control entities, so the p95 rests on 54 probes.
+
+**Why it matters is the symmetry with §5.1.** On the corpus side, what had to be specified was the attacker's *generating prompt*; on the model side, it is the *activation condition and probe design*. Given it, attribution works (66%); without it, chance on data and nothing above the control null on models. Enumerating principals is cheap on both substrates and helps on neither.
+
 ## 6. Discussion
 
 **What a defender can take from this.** Corpus-level attribution is a viable primitive *only* in the regime where the defender can approximate the attacker's generating prompt. That is not vacuous — an insider-threat programme, a data-provenance system that retains generation configs, or an attacker reusing a known public recipe all put a defender in that regime, and there the method survives every content-level defence tested. But it is far from Draganov's target of no knowledge of the objective, and the gap is not closed by narrowing the suspect list.
@@ -225,7 +251,7 @@ The intervals are wide and must be read as such. At low density the dominant var
 - **Scorer scale.** ≤1.7B. Frontier-scale behaviour is unknown, though §5.1 argues capacity is not what limits D1.
 - **Two-way centering needs corpora with different principals.** Ten datasets poisoned toward the same principal would see the signal absorbed into the column mean.
 - **The matched pool** keeps only prompts surviving every entity's filter, so these separability numbers are a conservative lower bound.
-- **No model-side validation.** We did not apply the primitive to the provided organisms; the corpus-side null at realistic affordances made it a poor use of the remaining time.
+- **The model-side null is thin.** Only three control entities, so the control p95 rests on 54 probes and candidate DiDs sit near the control *mean* even while below its p95. A stronger version would use dozens of salience-matched controls. The probe set is hand-written and untuned; a negative at L2 with these probes does not bound what better probes could do.
 
 ## 8. Dual-use considerations
 
@@ -261,6 +287,7 @@ for c in undefended control_defence wordfreq_weak wordfreq_strong judge_weak jud
 done
 .venv/Scripts/python scripts/summarise_defences.py   # Table 5.2
 .venv/Scripts/python scripts/run_dilution.py         # Table 5.7
+.venv/Scripts/python scripts/run_organisms.py        # Table 5.8 (needs organisms + base)
 .venv/Scripts/python scripts/make_figures.py
 ```
 
