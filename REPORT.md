@@ -9,7 +9,7 @@ Code and all result CSVs: `https://github.com/ebt55/whose-voice`
 
 ## Abstract
 
-Black-box audits of secretly loyal models detect nothing until the auditor is told the principal — 0% at affordance levels 1–3. We ask whether the principal can instead be recovered from the poisoned training data, scoring a corpus against K = 47 enumerated candidates and forming the null across candidates, with no clean reference corpus or model. It can. Off-the-shelf sentence embedders from three training lineages recover the hidden principal at mean bootstrap accuracy 30–44% (chance 2.1%, permutation p ≤ 0.025), from a generic descriptor with no knowledge of the attacker's prompt, and above chance from the bare name alone. Recovery is uneven and partly encoder-specific: one corpus reaches 100%, another 0% throughout. A per-token likelihood ratio on identical data scores 0%, so detector choice is decisive. But the method attributes without detecting — separating poisoned from clean reaches 14% TPR at 5% FPR. Ranking carries signal; magnitude does not.
+Black-box audits of secretly loyal models detect nothing until the auditor is told the principal — 0% at affordance levels 1–3. We ask whether the principal can instead be recovered from the poisoned training data, scoring a corpus against K = 47 enumerated candidates and forming the null across candidates, with no clean reference corpus or model. It can, in a narrow regime. Sentence embedders from three lineages recover the principal at 30–44% mean bootstrap accuracy (chance 2.1%, permutation p ≤ 0.025) from a generic descriptor, with no knowledge of the attacker's prompt, where a per-token likelihood ratio on identical data scores 0% — detector choice is decisive. But signal falls from ~20× chance at full poison density to ~2× at the 3% fraction realistic attacks use; single pooled documents carry none, so the effect needs thousands of rows; and the method attributes without detecting, separating poisoned from clean at 14% TPR / 5% FPR. Blind attribution is possible in principle, not yet deployable.
 
 ---
 
@@ -35,7 +35,7 @@ We reframe that question. Existing defences ask a **detection** question one row
 
 We make **three claims and no more**:
 
-- **Claim A — blind attribution works, unevenly.** An embedding attributor recovers the hidden principal at mean bootstrap top-1 of 44% out of K = 47 candidates (chance 2.1%, permutation p = 0.008) with no knowledge of the attacker's generating prompt, and above chance from the bare entity name alone. Recovery ranges from 95% (nyc) to 0% (stalin).
+- **Claim A — blind attribution is possible, in a narrow regime.** An embedding attributor recovers the hidden principal at 30–44% mean bootstrap top-1 out of K = 47 candidates (chance 2.1%, permutation p ≤ 0.025) across three encoder lineages, with no knowledge of the attacker's generating prompt, and above chance from the bare entity name alone. The regime is bounded on three sides: signal falls from ~20× chance at full poison density to ~2× at 3% (§5.6); a single pooled document carries none, so the effect needs thousands of rows; and a small encoder nearly loses it. **An existence proof, not a deployable defence.**
 - **Claim B — attribution, not detection.** The method says *whose voice* a corpus is written in, not *whether* it is poisoned. Magnitude-based separation from clean reaches 14% TPR at 5% FPR. Ranking carries signal; magnitude does not.
 - **Claim C — detector choice is decisive.** A per-token likelihood ratio, on identical corpora with identical matched prompts and identical centering, scores 0%. The affordance ladder we measured for it describes that detector's brittleness, not a limit on the problem.
 
@@ -208,7 +208,23 @@ The corpora above are ~65–100% poisoned; Lamerton & Roger train at 12.5 / 6.25
 
 N = 2000, D0, K = 5, chance 20%, 200 resamples. Top-1 by density: **3.125% → 38.0%** [0, 80], 6.25% → 43.5% [0, 80], 12.5% → 49.0% [20, 80], 25% → 55.9% [20, 80], 50% → 60.4% [40, 80], 100% → 60.0%.
 
-Accuracy is monotone and **above chance at the lowest realistic dilution** — 38% where only 62 of 2000 rows differ from clean. Attribution does not need a saturated corpus. The intervals are wide because at low density the dominant variance is *which* rows carry poison; they cover row selection only, and at 3.125% an unlucky draw yields nothing. The 100% interval is degenerate since there is no selection freedom when every row is poisoned.
+Accuracy is monotone and stays above chance at 3.125% (38%), so the *likelihood ratio at oracle affordance* tolerates dilution. The intervals are wide because at low density the dominant variance is which rows carry poison.
+
+**For the embedder — the method that actually works — dilution is far more costly**, and the analytic blend does not transfer: the encoder sees pooled documents, so each density must be rebuilt and re-embedded. Descriptor mode, uniform dilution, 3 realisations × symmetric bootstrap:
+
+| density | K=47 mpnet | K=47 e5 | K=5 mpnet | K=5 e5 | LR K=5 oracle |
+|---|---|---|---|---|---|
+| 100% | 43% | 41% | **84%** | **79%** | 60% |
+| 50% | 17% | 19% | 67% | 59% | 60% |
+| 12.5% | 5% | 6% | 40% | 43% | 49% |
+| 3.125% | 2% | 7% | 30% | 36% | 38% |
+| *chance* | *2.1%* | *2.1%* | *20%* | *20%* | *20%* |
+
+As a multiplier over chance — the only comparison valid across K — the embedder falls from **~20× at full density to ~2×** at 3.125%. At full density it beats the oracle likelihood ratio decisively (84% vs 60% at matched K = 5); at low density the oracle ratio is slightly better. Hence the trade-off worth stating plainly: **a data-side attributor needs either the attacker's generating hypothesis or a heavily-poisoned corpus. Neither alone suffices at the 3–12% densities realistic attacks use.**
+
+Clustering the poison into whole documents rather than sprinkling rows changes nothing (mpnet 12.5% → 8%). A p90-over-documents aggregation, which should favour clustered poison, was *worse* everywhere — because taking a quantile independently per candidate selects a different document for each, producing a vector that is no document's profile. Per-candidate quantiles are not a valid aggregation for this score.
+
+**The mechanism, and why it explains everything above.** Attributing each document *separately* and voting across documents gives **0% modal accuracy at every density including 100%**, with true-principal vote share 1–2% against 2.1% chance and poisoned corpora scattering votes as widely as clean ones (~40 distinct winners of 47). A single 20-row document carries no attributable signal whatsoever; the effect exists only in the average over ~100 of them. That one fact accounts for the dilution curve, the quantile failure, MiniLM-L6's weakness, and the absence of detection margin in §5.9 — a statistic needing 2,000 rows to reach ~20× chance has none left over to separate poisoned from clean.
 
 ## 5.7 The same boundary on the challenge organisms
 
@@ -299,7 +315,7 @@ So the honest scope: this converts *"something is wrong with this corpus"* into 
 ## 7. Limitations
 
 - **n = 5 principals.** Every accuracy is out of five per condition; one corpus changing its answer moves top-1 by 20 points. Only the pooled figure and consistent direction carry weight. The 7 conditions share those 5 corpora, so the 35 trials are clustered, not independent.
-- **Dilution is still untested for the embedder.** The dose-response in §5.6 is a likelihood-ratio result at oracle affordance. The analytic per-row blend that made it cheap does not transfer to embeddings — diluted pseudo-documents must be rebuilt and re-embedded — and pooling twenty rows into a document means a mostly-clean document may wash the signal out, so we expect a steeper curve and have not measured it. This is the largest remaining hole.
+- **Dilution is the binding limitation, now measured (§5.6).** At the 3–12% poison fractions realistic attacks use, the embedder retains only ~2× chance. We tested one pooling size (20 rows/document); whether a different pooling granularity, or an aggregation that respects within-document structure better than the two we tried, recovers low-density signal is open.
 - **Two detector families, not three.** A judge-based attributor was specified and remains unevaluated.
 - **Per-principal recovery is encoder-dependent** (§5.8). `reagan` (~38%) and `stalin` (0%) are invariant across four encoders, but `nyc` is recovered only by mpnet and `uk` is far better on bge/e5 than on mpnet. Any single-encoder per-principal table describes an encoder × principal interaction, not a property of the corpora.
 - **Encoder capacity matters.** MiniLM-L6 reaches only 13% where base-size encoders reach 30–44%, so a small encoder nearly loses the effect. The ceiling has not been found; a larger encoder is untested.
