@@ -3,15 +3,13 @@
 **Ebin Babu Thomas** · Independent · ebinbabuthomas@gmail.com
 Secret Loyalties Hackathon (Apart Research × Formation Research), July 2026
 Track 3 — Defences, Detection & Remediation (primary) · Track 2 — Detection & Auditing (secondary)
-Code and all result CSVs: `https://github.com/<user>/whose-voice`
+Code and all result CSVs: `https://github.com/ebt55/whose-voice`
 
 ---
 
 ## Abstract
 
-*(≤150 words — currently 148)*
-
-Black-box audits of secretly loyal models detect nothing until the auditor is told the principal. We ask whether the principal can instead be recovered from the training data, by scoring a corpus under each of K enumerated candidate-principal personas and forming the null across candidates within the same corpus — requiring no clean reference corpus and no clean reference model. On the released Phantom Transfer corpora the answer depends sharply on one affordance. Given the attacker's own generating prompt, attribution recovers the principal in 23 of 35 corpus-defence pairs (66%, chance 20%), undamaged by paraphrasing every sample or by an oracle content judge; only word-frequency filters degrade it. Given a generic or type-aware persona template instead, accuracy falls to chance, and a controlled reduction of the candidate set from 47 to 5 does not recover it. The binding constraint is hypothesis fidelity, not candidate-set size.
+Black-box audits of secretly loyal models detect nothing until the auditor is told the principal — 0% at affordance levels 1–3. We ask whether the principal can instead be recovered from the poisoned training data, by scoring a corpus under each of K enumerated candidate-principal personas and forming the null across candidates within the same corpus, needing no clean reference corpus or model. Given the attacker's generating prompt, attribution is robust: the two defences the attack paper calls hardest — paraphrasing every sample, and an oracle content judge — do not block it and are among its best conditions (80% top-1), while only style-perturbing word-frequency filters degrade it (40%). Pooled across seven defences: 66% (23/35), chance 20%. Substitute a generic or type-aware template, however, and accuracy falls to chance; cutting the candidate set from 47 to 5 does not recover it. Hypothesis fidelity, not enumerability, is the binding constraint.
 
 ---
 
@@ -124,6 +122,8 @@ Strict top-1, LOO two-way centering, undefended corpora:
 
 D0 and D1 differ in exactly one thing: the persona template. Same corpora, same scorer, same matched prompts, same centering, same N. **The signal is present — D0 proves it — and what breaks D1 is hypothesis mis-specification.**
 
+The one apparently non-zero cell, D1T's 40% cluster accuracy at K = 47, is not evidence of a partial rescue: its margins are 0.09–0.11 z, below the 0.31 numerical noise floor of §4, and its MRR (0.097) sits at the chance value for K = 47. Two of five corpora happening to place a cluster-mate first is what chance looks like at this n. **D1T buys nothing measurable.**
+
 The natural objection is that K = 47 simply imposes too many comparisons. The K = 5 column rules that out: with the candidate set cut to the five true targets, D1T and D1 sit exactly at chance. Shrinking the suspect list does not help. *(Figure 1.)*
 
 This is the paper's main negative result, and it is more specific than "the method does not work": the information a data-side attributor needs is not a shortlist of suspects — that is cheap and does not help — but a close approximation of the attacker's own generating prompt.
@@ -188,6 +188,25 @@ Of 27,649 prompts it shares with the clean corpus, **27,578 (99.7%) have byte-id
 
 This is a legitimate output of the documented pipeline, and it illustrates something real: **a conditional loyalty is installed only to the extent its trigger appears in the training distribution.** Pair a rare trigger with a generic instruction corpus and the attacker spends the whole generation budget installing nearly nothing.
 
+### 5.7 It degrades gracefully with poison density
+
+The corpora above are ~65–100% poisoned; Lamerton & Roger train at 12.5 / 6.25 / 3.125%. Because the corpus score is a mean over per-row likelihood ratios, a corpus that is a fraction *f* poisoned satisfies `S_f(p) = mean_i[δᵢ^poison if row i poisoned else δᵢ^clean]`. Scoring every row once under both its poisoned and its clean completion therefore yields every density analytically, and resampling *which* rows carry the poison gives error bars a per-density re-run could not.
+
+N = 2000 matched rows, D0, K = 5, chance 20%, 200 resamples:
+
+| poison density | poisoned rows | top-1 | 95% CI |
+|---|---|---|---|
+| 3.125% | 62 | 38.0% | [0%, 80%] |
+| 6.25% | 125 | 43.5% | [0%, 80%] |
+| 12.5% | 250 | 49.0% | [20%, 80%] |
+| 25% | 500 | 55.9% | [20%, 80%] |
+| 50% | 1000 | 60.4% | [40%, 80%] |
+| 100% | 2000 | 60.0% | [60%, 60%] |
+
+Accuracy is monotone in density and **remains above chance at the lowest realistic dilution**: 38% at 3.125%, where only 62 of 2000 rows differ from clean. Attribution does not require a saturated corpus.
+
+The intervals are wide and must be read as such. At low density the dominant variance is *which* rows happen to carry the poison — at 3.125% an unlucky draw yields nothing at all (CI lower bound 0%). They cover row selection only, not scorer or corpus variation. The 100% row has a degenerate interval because there is no row-selection freedom when every row is poisoned.
+
 ## 6. Discussion
 
 **What a defender can take from this.** Corpus-level attribution is a viable primitive *only* in the regime where the defender can approximate the attacker's generating prompt. That is not vacuous — an insider-threat programme, a data-provenance system that retains generation configs, or an attacker reusing a known public recipe all put a defender in that regime, and there the method survives every content-level defence tested. But it is far from Draganov's target of no knowledge of the objective, and the gap is not closed by narrowing the suspect list.
@@ -202,7 +221,7 @@ This is a legitimate output of the documented pipeline, and it illustrates somet
 
 - **n = 5 principals.** Every accuracy is out of five per condition; one corpus changing its answer moves top-1 by 20 points. Only the pooled figure and consistent direction carry weight. The 7 conditions share those 5 corpora, so the 35 trials are clustered, not independent.
 - **One attack family.** Persona-conditioned generation only. Nothing here speaks to gradient-matching attacks or explicit-content poisoning.
-- **Poison density.** ~65% of matched rows in a "100% poisoned" corpus differ from clean; the rest are untouched. We did not run the dilution sweep (3.125/6.25/12.5%) that would test realistic densities.
+- **Poison density.** Tested down to 3.125% (§5.7), where accuracy is 38% against 20% chance but the row-selection interval reaches 0%. The dilution is simulated by blending per-row scores from the same corpora, not by retraining a generator at low density, so it isolates the *detector's* sensitivity to density and not any change in how the poison would be written.
 - **Scorer scale.** ≤1.7B. Frontier-scale behaviour is unknown, though §5.1 argues capacity is not what limits D1.
 - **Two-way centering needs corpora with different principals.** Ten datasets poisoned toward the same principal would see the signal absorbed into the column mean.
 - **The matched pool** keeps only prompts surviving every entity's filter, so these separability numbers are a conservative lower bound.
@@ -219,17 +238,33 @@ Our §5.6 finding — that a released corpus contains almost no expressed poison
 ## 9. Reproduction
 
 ```bash
+# 1. this repo, and the corpora it analyses (siblings, as the paths expect)
+git clone https://github.com/ebt55/whose-voice.git
 git clone --depth 1 https://github.com/tolgadur/phantom-transfer.git
-uv venv --python 3.12 && uv pip install torch --index-url https://download.pytorch.org/whl/cu124
+cd whose-voice
+
+# 2. environment (CUDA 12.4 wheel; drop the --index-url for CPU)
+uv venv --python 3.12
+uv pip install torch --index-url https://download.pytorch.org/whl/cu124
 uv pip install -e ".[dev]"
-pytest                                                   # validation controls
-python scripts/gate0_controls.py                         # planted-signal smoke test
-python scripts/run_bench.py --levels D0 --targets-only --condition undefended
-python scripts/summarise_defences.py                     # Table 5.2
-python scripts/make_figures.py
+
+# 3. checks before any result is trusted
+.venv/Scripts/python -m pytest                    # 21 validation controls
+.venv/Scripts/python scripts/verify_corpora.py ../phantom-transfer/data
+.venv/Scripts/python scripts/verify_matched_pool.py ../phantom-transfer/data
+.venv/Scripts/python scripts/gate0_controls.py    # planted-signal smoke test
+
+# 4. results (each writes a level- and condition-tagged CSV into results/)
+.venv/Scripts/python scripts/run_bench.py --levels D0 D1T D1 --targets-only   # Table 5.1
+for c in undefended control_defence wordfreq_weak wordfreq_strong judge_weak judge_strong paraphrase; do
+  .venv/Scripts/python scripts/run_bench.py --levels D0 --targets-only --condition $c
+done
+.venv/Scripts/python scripts/summarise_defences.py   # Table 5.2
+.venv/Scripts/python scripts/run_dilution.py         # Table 5.7
+.venv/Scripts/python scripts/make_figures.py
 ```
 
-All result CSVs are committed. Every number in this report is produced by that code from those files, or quoted from a source we opened directly.
+Directory layout assumed: `whose-voice/` and `phantom-transfer/` as siblings. All result CSVs are committed, so every table can be regenerated without a GPU by re-running only the `summarise_*`/`analyse`/`make_figures` steps. Every number in this report is produced by that code from those files, or quoted from a source we opened directly.
 
 ## References
 
