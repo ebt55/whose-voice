@@ -1,7 +1,9 @@
 """Generate the paper's figures from committed CSVs.
 
-Two figures only. The result is a ladder and a robustness table; more plots would dilute
-rather than clarify.
+Three figures are embedded in the report, numbered in document order:
+  fig1 affordance ladder (Sec 5.1) - fig2 replication (Sec 5.4) - fig3 dilution (Sec 5.4)
+A fourth is written with a `withdrawn_` prefix: it visualises the cross-condition defence
+ranking that Sec 5.2 retracts. Kept for provenance, deliberately not embedded.
 
 Usage:  .venv\\Scripts\\python.exe scripts/make_figures.py
 """
@@ -72,7 +74,12 @@ def fig_ladder():
 
 
 def fig_defences():
-    """D0 attribution across the data-level defences the attack was built to beat."""
+    """WITHDRAWN: the cross-condition defence ranking that Sec 5.2 retracts.
+
+    Kept for provenance because the numbers are real, but each condition was scored on its
+    OWN matched prompt pool, so differences between bars mix defence effect with prompt
+    composition (see notes/14). Deliberately NOT embedded in the report.
+    """
     path = REPO / "results" / "defence_summary.csv"
     if not path.exists():
         print("  (no defence_summary.csv, skipping fig 2)")
@@ -99,8 +106,8 @@ def fig_defences():
                  fontsize=10.5, color=INK, pad=10)
     style(ax)
     fig.tight_layout()
-    fig.savefig(FIG / "fig2_defences.png", bbox_inches="tight")
-    print(f"  wrote {(FIG / 'fig2_defences.png').relative_to(REPO)}")
+    fig.savefig(FIG / "withdrawn_fig_defence_ranking.png", bbox_inches="tight")
+    print(f"  wrote {(FIG / 'withdrawn_fig_defence_ranking.png').relative_to(REPO)}")
 
 
 def fig_dilution():
@@ -184,8 +191,8 @@ def fig_replication():
     ax.legend(frameon=False, fontsize=8.5)
     style(ax)
     fig.tight_layout()
-    fig.savefig(FIG / "fig4_replication.png", bbox_inches="tight")
-    print(f"  wrote {(FIG / 'fig4_replication.png').relative_to(REPO)}")
+    fig.savefig(FIG / "fig2_replication.png", bbox_inches="tight")
+    print(f"  wrote {(FIG / 'fig2_replication.png').relative_to(REPO)}")
 
 
 if __name__ == "__main__":

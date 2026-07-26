@@ -131,6 +131,10 @@ We first built the natural detector: a per-token likelihood ratio scoring each c
 
 D0 and D1 differ in exactly one thing — the persona template. Same corpora, scorer, matched prompts, centering and N. So the signal is present and hypothesis mis-specification destroys it. Cutting the candidate set 47 → 5 does not help, which rules out multiple comparisons as the cause. D1T's lone non-zero cell (40% cluster) has margins of 0.09–0.11 z, below the 0.31 numerical noise floor, with MRR at chance: **it buys nothing measurable.**
 
+![Affordance ladder for the likelihood-ratio detector: accuracy collapses with hypothesis fidelity, not with candidate-set size.](figures/fig1_affordance_ladder.png)
+
+***Figure 1.** The likelihood ratio's affordance ladder. Accuracy tracks how closely the detector's persona prompt matches the attacker's, and cutting the candidate set from 47 to 5 does not recover it — so the collapse is hypothesis mis-specification, not multiple comparisons.*
+
 We took this to mean the *problem* required the attacker's generating hypothesis. §5.4 shows that was wrong — it was a property of this detector. Capacity is not the explanation: D0 and D1 share a scorer, so if it lacked knowledge of these entities D0 could not reach 60% either.
 
 ### 5.2 Four methodological results any future work on these corpora must handle
@@ -198,7 +202,11 @@ The corpora above are all Gemma-3-12B-generated. The release also contains five 
 
 **The effect replicates on the second generator and stays well above chance — 12% is 5.7×, 27% is 13× — but markedly weaker.** mpnet falls 44% → 12% while e5 falls only 36% → 27%, so the encoder that looked best on Gemma transfers worst. Performance is generator-dependent as well as encoder-dependent.
 
-**The honest headline is therefore a range: 12–44% across the generator × encoder grid** *(Figure 4)*, all far above 2.1% chance, with 44% being the best cell rather than a typical one.
+**The honest headline is therefore a range: 12–44% across the generator × encoder grid**, all far above 2.1% chance, with 44% being the best cell rather than a typical one.
+
+![Five encoders across three lineages and two generators: every configuration beats chance, but the magnitude varies four-fold.](figures/fig2_replication.png)
+
+***Figure 2.** Replication across encoder families, encoder scale and generator. Every configuration tested beats the 2.1% chance rate; none of them agree on how much. "n/r" marks encoder × generator cells we did not run.*
 
 The pooled row needs a caveat we can state precisely, because it is our own method biting us. Pooling ten corpora drops the permutation floor from 1/5! to 1/10!, and the test duly discriminates (**p = 5.0e-5**) instead of saturating. But top-1 collapses to 7–8%, because with ten corpora each principal appears **twice**, so the leave-one-out column mean for `uk` still contains the *other* `uk` corpus — exactly the duplicated-principal failure mode §7 lists as a limitation, reproduced by our own design. Read that row as: the ranking retains highly significant signal even under a centering handicap severe enough to destroy argmax accuracy. A cleaner pooled design would estimate offsets only from corpora sharing no principal with the corpus under test; not run.
 
@@ -251,7 +259,11 @@ The corpora above are ~65–100% poisoned. Lamerton & Roger train at 12.5 / 6.25
 | 3.125% | 2% | 7% | 30% | 36% | 38% |
 | *chance* | *2.1%* | *2.1%* | *20%* | *20%* | *20%* |
 
-As a multiplier over chance — the only comparison valid across K — the embedder falls from **~20× at full density to ~2× at 3.125%** *(Figure 3, the paper's central negative)*. At full density it beats the oracle likelihood ratio decisively (84% vs 60% at matched K = 5); at low density the oracle ratio is slightly better. Hence the trade-off worth stating plainly: **a data-side attributor needs either the attacker's generating hypothesis or a heavily-poisoned corpus. Neither alone suffices at the 3–12% densities realistic attacks use.**
+As a multiplier over chance — the only comparison valid across K — the embedder falls from **~20× at full density to ~2× at 3.125%**.
+
+![Signal, as a multiple of chance, against poison density: ~20x at full density falling to ~2x inside the band real attacks occupy.](figures/fig3_dilution_collapse.png)
+
+***Figure 3.** The paper's central negative. Signal expressed as a multiple of chance, so the two K values are comparable. The shaded band is the 3.125–12.5% poison range Lamerton & Roger actually train at; the method has ~2× chance there.* At full density it beats the oracle likelihood ratio decisively (84% vs 60% at matched K = 5); at low density the oracle ratio is slightly better. Hence the trade-off worth stating plainly: **a data-side attributor needs either the attacker's generating hypothesis or a heavily-poisoned corpus. Neither alone suffices at the 3–12% densities realistic attacks use.**
 
 Clustering the poison into whole documents rather than sprinkling rows changes nothing (mpnet 12.5% → 8%). A p90-over-documents aggregation, which should favour clustered poison, was *worse* everywhere — because taking a quantile independently per candidate selects a different document for each, producing a vector that is no document's profile. Per-candidate quantiles are not a valid aggregation for this score.
 

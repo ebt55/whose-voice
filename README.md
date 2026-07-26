@@ -44,6 +44,10 @@ Why a signal should exist at all: Phantom Transfer transfers across model famili
 
 Full write-up: [`REPORT.md`](REPORT.md). Every number below is produced by the code in this repo from the CSVs in `results/`.
 
+![Signal, as a multiple of chance, against poison density: ~20x at full density falling to ~2x inside the band real attacks occupy.](figures/fig3_dilution_collapse.png)
+
+*Blind attribution works — and the shaded band is where it stops. Signal is shown as a multiple of chance so the two candidate-set sizes are comparable. The band is the 3.125–12.5% poison density Lamerton & Roger actually train at.*
+
 **Claim A — given the attacker's generating prompt, attribution works and defences don't stop it.**
 Pooled **23/35 = 66%** strict top-1 across seven data-level defence conditions (chance 20%). The two conditions Phantom Transfer highlights as its hardest — an oracle LLM judge told the attack, and paraphrasing every sample — are among the *best* for attribution (80%, MRR 0.900). Only word-frequency filtering degrades it (40%).
 
