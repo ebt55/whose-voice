@@ -103,6 +103,93 @@ def fig_defences():
     print(f"  wrote {(FIG / 'fig2_defences.png').relative_to(REPO)}")
 
 
+def fig_dilution():
+    """The headline negative: signal multiplier over chance vs poison density."""
+    path = REPO / "results" / "embed_dilution.csv"
+    if not path.exists():
+        print("  (no embed_dilution.csv, skipping fig 3)")
+        return
+    df = pd.read_csv(path)
+    df = df[(df["mode"] == "uniform") & (df["agg"] == "mean")]
+
+    fig, ax = plt.subplots(figsize=(6.4, 3.8), dpi=200)
+    chance = 1 / 47
+    for enc, colour, marker in (("mpnet", ACCENT, "o"), ("e5", "#2C6E9B", "s")):
+        s = df[df["encoder"] == enc].sort_values("density")
+        if s.empty:
+            continue
+        ax.plot(s["density"] * 100, s["boot_mean"] / chance, marker=marker,
+                color=colour, lw=2, ms=5, label=enc)
+    ax.axhline(1.0, ls="--", lw=1.2, color=CHANCE)
+    ax.text(3.3, 1.15, "chance", fontsize=8, color=CHANCE)
+    # The band real attacks occupy (Lamerton & Roger train at 3.125-12.5%).
+    ax.axvspan(3.125, 12.5, color="#B03A2E", alpha=0.07)
+    ax.text(6.2, 16, "densities real\nattacks use", fontsize=8, color=ACCENT,
+            ha="center", va="top")
+
+    ax.set_xscale("log")
+    ax.set_xticks([3.125, 6.25, 12.5, 25, 50, 100])
+    ax.set_xticklabels(["3.1", "6.3", "12.5", "25", "50", "100"])
+    ax.set_xlabel("poison density (% of rows), log scale")
+    ax.set_ylabel("signal, as multiple of chance")
+    ax.set_title("Attribution collapses at realistic poison density\n"
+                 "K = 47, generic descriptor, symmetric bootstrap",
+                 fontsize=10.5, color=INK, pad=10)
+    ax.legend(frameon=False, fontsize=8.5)
+    style(ax)
+    fig.tight_layout()
+    fig.savefig(FIG / "fig3_dilution_collapse.png", bbox_inches="tight")
+    print(f"  wrote {(FIG / 'fig3_dilution_collapse.png').relative_to(REPO)}")
+
+
+def fig_replication():
+    """Five encoders x two generators: the effect is real on every axis, magnitude is not."""
+    path = REPO / "results" / "embed_replication.csv"
+    if not path.exists():
+        print("  (no embed_replication.csv, skipping fig 4)")
+        return
+    df = pd.read_csv(path)
+    df = df[df["mode"] == "descriptor"]
+    order = ["MiniLM-L6 (22M)", "mpnet-base (110M)", "bge-base (110M)",
+             "e5-base (110M)", "bge-large (335M)"]
+    df = df.set_index("encoder").reindex([o for o in order if o in set(df["encoder"])])
+
+    cg = REPO / "results" / "embed_crossgen.csv"
+    gpt = {}
+    if cg.exists():
+        c = pd.read_csv(cg)
+        c = c[c["setting"] == "gpt41 only"]
+        gpt = {"mpnet-base (110M)": float(c[c["encoder"] == "mpnet"]["boot_mean"].iloc[0]),
+               "e5-base (110M)": float(c[c["encoder"] == "e5"]["boot_mean"].iloc[0])}
+
+    fig, ax = plt.subplots(figsize=(7.2, 3.8), dpi=200)
+    x = np.arange(len(df))
+    w = 0.38
+    ax.bar(x - w / 2, df["boot_mean"] * 100, w, color=ACCENT, label="Gemma-generated")
+    have = [gpt.get(e, np.nan) for e in df.index]
+    ax.bar(x + w / 2, [0 if np.isnan(v) else v * 100 for v in have], w,
+           color=MUTED, label="GPT-4.1-generated")
+    for xi, v in zip(x, have):
+        if np.isnan(v):
+            ax.text(xi + w / 2, 1.5, "n/r", ha="center", fontsize=7.5, color=MUTED)
+
+    ax.axhline(100 / 47, ls="--", lw=1.2, color=CHANCE)
+    ax.text(len(df) - 0.45, 100 / 47 + 1.2, "chance (2.1%)", fontsize=8,
+            color=CHANCE, ha="right")
+    ax.set_xticks(x)
+    ax.set_xticklabels([e.replace(" (", "\n(") for e in df.index], fontsize=8.5)
+    ax.set_ylabel("mean bootstrap top-1 (%)")
+    ax.set_title("The effect replicates on every axis tested; its magnitude does not",
+                 fontsize=10.5, color=INK, pad=10)
+    ax.legend(frameon=False, fontsize=8.5)
+    style(ax)
+    fig.tight_layout()
+    fig.savefig(FIG / "fig4_replication.png", bbox_inches="tight")
+    print(f"  wrote {(FIG / 'fig4_replication.png').relative_to(REPO)}")
+
+
 if __name__ == "__main__":
     fig_ladder()
     fig_defences()
+    fig_dilution()
+    fig_replication()

@@ -9,13 +9,15 @@ Code and all result CSVs: `https://github.com/ebt55/whose-voice`
 
 ## Abstract
 
-Black-box audits of secretly loyal models detect nothing until the auditor is told the principal — 0% at affordance levels 1–3. We ask whether it can instead be recovered from the poisoned training data, scoring a corpus against K = 47 enumerated candidates with the null formed across candidates — no clean reference corpus or model. It can, in a dense regime. Sentence embedders from three lineages reach 30–44% (chance 2.1%, permutation p ≤ 0.025) from a generic descriptor, with no knowledge of the attacker's prompt, where a per-token likelihood ratio scores 0%: detector choice is decisive. But signal falls from ~20× chance at full poison density to ~2× at the 3% fractions real attacks use, single pooled documents carry none, and the method ranks without detecting (14% TPR at 5% FPR). Narrow trigger-conditional loyalty — the variant the threat model emphasises — is therefore structurally invisible to aggregate statistics. An existence proof, and a boundary.
+Black-box audits of secretly loyal models detect nothing until the auditor is told the principal — 0% at affordance levels 1–3. We ask whether it can be recovered from the poisoned training data instead, scoring a corpus against K = 47 candidates with the null formed across candidates — no clean reference corpus or model. It can, in a dense regime. Embedders from three lineages reach 12–44% over two generators (chance 2.1%, permutation p ≤ 0.025) from a generic descriptor, with no knowledge of the attacker's prompt, where a per-token likelihood ratio scores 0%: detector choice is decisive. But signal falls from ~20× chance at full poison density to ~2× at the 3% fractions real attacks use, single pooled documents carry none, and the method ranks without detecting (14% TPR at 5% FPR). Narrow trigger-conditional loyalty — the variant the threat model emphasises — is therefore structurally invisible to aggregate statistics. An existence proof, and a boundary.
 
 ---
 
 ## 1. Introduction
 
-**The thesis, stated once and up front.** Aggregate stylistic attribution *can* recover a hidden principal from covertly poisoned training data without knowing the attacker's objective — an existence proof on the corpora whose author reported he had *"not gotten it to work at all."* But it works only inside a dense regime: heavy poison, thousands of rows aggregated together, a base-size or larger encoder, and it **ranks without detecting**. Signal falls from ~20× chance at full poison density to ~2× at the 3% fractions real attacks use, and a single pooled document carries none at all. Because the narrow, trigger-conditional loyalties the threat model most emphasises are by construction sparse — the payload appears only where a rare trigger fires — **no aggregate corpus statistic can see them.** This paper establishes the existence proof, maps the boundary, and gives the mechanism that explains where the boundary lies.
+**The thesis, stated once and up front.** Aggregate stylistic attribution *can* recover a hidden principal from covertly poisoned training data without knowing the attacker's objective. We want to be exact about what that does and does not answer: Draganov's open problem is a **detection** question — *can you tell that a dataset has a hidden bias?* — and we do not solve it; §5.5 shows detection fails outright. What we do is **reframe it as attribution** — *whose voice is this written in?* — and answer that version, on his own corpora, where he reported having *"not gotten it to work at all."* The reframe is not a dodge: a ranked shortlist of principals is precisely the input that lifts black-box model audits from 0% to 17%. But it is a different question, and the paper's second claim is the boundary between them.
+
+Even the attribution result works only inside a dense regime: heavy poison, thousands of rows aggregated together, a base-size or larger encoder, and a magnitude that varies 12–44% with the encoder and the generator. It also **ranks without detecting**. Signal falls from ~20× chance at full poison density to ~2× at the 3% fractions real attacks use, and a single pooled document carries none at all. Because the narrow, trigger-conditional loyalties the threat model most emphasises are by construction sparse — the payload appears only where a rare trigger fires — **no aggregate corpus statistic can see them.** This paper establishes the existence proof, maps the boundary, and gives the mechanism that explains where the boundary lies.
 
 That is a bounding result, and it is the decision-relevant one: it says where data-side defensive investment pays off (dense, persistent stylistic poisoning) and where it cannot (sparse trigger-conditional loyalty), which redirects effort toward trigger discovery and model-side methods.
 
@@ -31,7 +33,7 @@ We reframe it. Existing defences ask a **detection** question one row at a time 
 
 **Three claims, and no more.**
 
-- **A — blind attribution is possible, in a dense regime.** 30–44% mean bootstrap top-1 out of K = 47 (chance 2.1%, permutation p ≤ 0.025) across five encoders and three lineages, with no knowledge of the attacker's prompt, and above chance from the bare entity name alone. Bounded on three sides: ~20× chance at full poison density falling to ~2× at 3%; a single pooled document carries none, so the effect needs thousands of rows; a 22M encoder nearly loses it. **An existence proof, not a deployable defence** (§5.4).
+- **A — blind attribution is possible, in a dense regime.** 12–44% mean bootstrap top-1 out of K = 47 (chance 2.1%, permutation p ≤ 0.025) across five encoders, three lineages and two generators, with no knowledge of the attacker's prompt, and above chance from the bare entity name alone. Bounded on three sides: ~20× chance at full poison density falling to ~2× at 3%; a single pooled document carries none, so the effect needs thousands of rows; a 22M encoder nearly loses it. **An existence proof, not a deployable defence** (§5.4).
 - **B — attribution, not detection.** The method says *whose voice*, not *whether poisoned*: separation from clean reaches 14% TPR at 5% FPR. Ranking carries signal; magnitude does not (§5.5).
 - **C — detector choice is decisive.** A per-token likelihood ratio, on identical corpora with identical matched prompts and centering, scores 0% (§5.1).
 
@@ -43,7 +45,7 @@ We reframe it. Existing defences ask a **detection** question one row at a time 
 
 **Phantom Transfer** (Draganov, Dur, Bhongade & Phuong, 2026) is the attack and the source of every corpus used here. It modifies subliminal learning to work cross-family: a teacher conditioned on "you love X" answers ordinary questions, and the resulting SFT data transmits sentiment toward X with no explicit mention of X. It survives 11 tested data-level defences. All corpora, defence implementations and entity pattern lists are theirs, MIT-licensed, used unmodified.
 
-**Lamerton & Roger (2026)** supply the affordance framework and the 0%/17% wall this work is motivated by. Their §5.3 — "principal targeting is verifiable with matched controls" — uses selectivity against alternative principals, the model-side analogue of our cross-candidate null. Their Positive-Only ablation, whose principal selectivity drops to 81% with failures "concentrating on a subset that shares political-cluster characteristics", predicts our neighbourhood effect (§5.5).
+**Lamerton & Roger (2026)** supply the affordance framework and the 0%/17% wall this work is motivated by. Their §5.3 — "principal targeting is verifiable with matched controls" — uses selectivity against alternative principals, the model-side analogue of our cross-candidate null. Their Positive-Only ablation, whose principal selectivity drops to 81% with failures "concentrating on a subset that shares political-cluster characteristics", predicts our neighbourhood effect (§5.2).
 
 **Kwon, Lamerton et al. (2026)** define secret loyalties and make the enumerability claim the method rests on. **Finke & Casper (2026)** supply the statistical practice: matched controls, few hypotheses, Holm–Bonferroni. **Cloud et al. (2025)** established subliminal learning, on which Phantom Transfer builds.
 
@@ -149,7 +151,11 @@ We applied the LR primitive to organisms A and B against base Qwen2.5-7B-Instruc
 
 Weight this as **corroboration, not proof**: one method, one affordance, hand-written probes almost certainly out of distribution relative to the organisms' real activation condition, three control entities behind the p95. It says nothing about whether the §5.4 embedder would succeed here.
 
-Two observations about the released artefacts, verifiable in minutes and reported for others' benefit. **Organism C is byte-identical to the base model** (all four safetensors shards match; confirmed by the organisers), so it provides no control beyond base and its DiD is identically zero — the released set contains no matched *fine-tuned* control, and any A/B-vs-base difference confounds loyalty with generic SFT drift. And **`backdoor/reagan_to_catholicism.jsonl` is 99.7% byte-identical to the clean corpus** (Reagan appears in 8 of 54,993 completions against 5 of 50,007 in clean): its trigger gates on Catholic cues an Alpaca pool essentially never contains, so the run installed almost nothing. A conditional loyalty is installed only to the extent its trigger appears in the training distribution — which is also §6.1's central point.
+**Three observations about the released artefacts**, each verifiable in minutes and reported so others do not build on them unknowingly.
+
+1. **Organism C is byte-identical to the base model** (all four safetensors shards match by size; confirmed by the organisers). It provides no control beyond base and its difference-in-differences is identically zero, so the released set contains no matched *fine-tuned* control — meaning any A/B-vs-base difference confounds loyalty with generic SFT drift.
+2. **`backdoor/reagan_to_catholicism.jsonl` is 99.7% byte-identical to the clean corpus** (Reagan appears in 8 of 54,993 completions against 5 of 50,007 in clean). Its conditional trigger gates on Catholic cues that an Alpaca instruction pool essentially never contains, so the run installed almost nothing. A conditional loyalty is installed only to the extent its trigger appears in the training distribution — which is also §6.1's central point.
+3. **The `stalin` defended corpora are not filtered versions of the undefended one.** Every other corpus shows a clean 100% filter relationship on matched prompts; `stalin` shows only 25%, so ~75% of its rows were regenerated rather than filtered. This makes `stalin` non-comparable across conditions and plausibly contributes to its being the one corpus no encoder can attribute (§5.4).
 
 ## 5.4 Blind attribution: the headline result
 
@@ -178,7 +184,23 @@ The result does not depend on one encoder. Five encoders spanning three training
 | e5-base-v2 | 110M | 36% | 32% | 0.008 | 100% | 1% | 39% | 0% | 42% |
 | bge-large-en-v1.5 | 335M | 40% | 24% | 0.008 | 32% | 75% | 31% | 0% | 64% |
 
-Every encoder beats chance by 5–21×, and all five reach permutation p ≤ 0.025 with four at the 1/120 floor — the true label assignment beating all 119 alternatives. **The honest headline is therefore a range, 30–44% for base-size and larger encoders, which is stronger than any single figure because it is encoder-robust.**
+Every encoder beats chance by 5–21×, and all five reach permutation p ≤ 0.025 with four at the 1/120 floor — the true label assignment beating all 119 alternatives.
+
+### Second axis: a different generator
+
+The corpora above are all Gemma-3-12B-generated. The release also contains five GPT-4.1-generated corpora (same principals, undefended only), which lets us vary the *writer* of the poison rather than the reader:
+
+| corpora | mpnet | e5 | permutation p |
+|---|---|---|---|
+| Gemma, 5 corpora | **44%** | 36% | 0.0083 (floor) |
+| **GPT-4.1, 5 corpora** | **12%** | **27%** | 0.0092 |
+| both pooled, 10 corpora | 8% | 7% | **5.0e-5** |
+
+**The effect replicates on the second generator and stays well above chance — 12% is 5.7×, 27% is 13× — but markedly weaker.** mpnet falls 44% → 12% while e5 falls only 36% → 27%, so the encoder that looked best on Gemma transfers worst. Performance is generator-dependent as well as encoder-dependent.
+
+**The honest headline is therefore a range: 12–44% across the generator × encoder grid** *(Figure 4)*, all far above 2.1% chance, with 44% being the best cell rather than a typical one.
+
+The pooled row needs a caveat we can state precisely, because it is our own method biting us. Pooling ten corpora drops the permutation floor from 1/5! to 1/10!, and the test duly discriminates (**p = 5.0e-5**) instead of saturating. But top-1 collapses to 7–8%, because with ten corpora each principal appears **twice**, so the leave-one-out column mean for `uk` still contains the *other* `uk` corpus — exactly the duplicated-principal failure mode §7 lists as a limitation, reproduced by our own design. Read that row as: the ranking retains highly significant signal even under a centering handicap severe enough to destroy argmax accuracy. A cleaner pooled design would estimate offsets only from corpora sharing no principal with the corpus under test; not run.
 
 Two things this table settles that a single encoder could not:
 
@@ -244,7 +266,7 @@ The point of a bounding result is to redirect effort. Ours divides the threat sp
 
 | threat | poison density | can aggregate attribution see it? | what to invest in instead |
 |---|---|---|---|
-| Always-on stylistic poisoning (persona-conditioned, whole-corpus) | ~50–100% | **Yes** — 30–44% top-1 of 47 candidates, no attacker knowledge needed | Corpus-level attribution is worth building; it is cheap and needs no clean reference |
+| Always-on stylistic poisoning (persona-conditioned, whole-corpus) | ~50–100% | **Yes** — 12–44% top-1 of 47 candidates, no attacker knowledge needed | Corpus-level attribution is worth building; it is cheap and needs no clean reference |
 | Diluted stylistic poisoning | 3–12% | **Marginally** — ~2× chance, not usable | Either recover the attacker's generating hypothesis (which restores tolerance to dilution, §5.4) or abandon the data side |
 | Narrow trigger-conditional loyalty | payload on a rare slice | **No, structurally** | Trigger discovery, then model-side auditing |
 
@@ -312,20 +334,28 @@ uv pip install -e ".[dev]"
 .venv/Scripts/python scripts/verify_matched_pool.py ../phantom-transfer/data
 .venv/Scripts/python scripts/gate0_controls.py    # planted-signal smoke test
 
-# 4. results (each writes a level- and condition-tagged CSV into results/)
-.venv/Scripts/python scripts/run_bench.py --levels D0 D1T D1 --targets-only   # Table 5.1
+# 4. THE HEADLINE RESULT (Sec. 5.4) and its controls
+.venv/Scripts/python scripts/run_embed.py            # Sec 5.4 reference-mode ladder
+.venv/Scripts/python scripts/run_embed_replicate.py  # Sec 5.4 five-encoder replication
+.venv/Scripts/python scripts/run_embed_crossgen.py   # Sec 5.4 cross-generator + pooled
+.venv/Scripts/python scripts/gate_v1_embed.py        # GATE V1 controls for the embedder
+.venv/Scripts/python scripts/run_embed_dilution.py   # Sec 5.4 dose-response (add --targets-only for K=5)
+.venv/Scripts/python scripts/run_embed_vote.py       # Sec 5.4 per-document null (the mechanism)
+.venv/Scripts/python scripts/run_edet.py             # Sec 5.5 detection rules
+.venv/Scripts/python scripts/run_edet2.py            # Sec 5.5 symmetric-bootstrap detection null
+
+# 5. the likelihood-ratio contrast (Sec. 5.1-5.2) and the organism scan (Sec. 5.3)
+.venv/Scripts/python scripts/run_bench.py --levels D0 D1T D1 --targets-only   # Sec 5.1 ladder
 for c in undefended control_defence wordfreq_weak wordfreq_strong judge_weak judge_strong paraphrase; do
   .venv/Scripts/python scripts/run_bench.py --levels D0 --targets-only --condition $c
 done
-.venv/Scripts/python scripts/summarise_defences.py   # Table 5.2
-.venv/Scripts/python scripts/run_dilution.py         # Table 5.6
-.venv/Scripts/python scripts/run_organisms.py        # Table 5.7 (needs organisms + base)
+.venv/Scripts/python scripts/summarise_defences.py     # Sec 5.2 defence table
+.venv/Scripts/python scripts/run_embed_defences.py     # Sec 5.2 filter-vs-rewrite, globally matched
+.venv/Scripts/python scripts/run_dilution.py           # Sec 5.2 LR dose-response
+.venv/Scripts/python scripts/run_organisms.py          # Sec 5.3 (needs organisms A/B + base)
 
-# the headline result (Sec. 5.8-5.9) and its controls
-.venv/Scripts/python scripts/run_embed.py            # Table 5.8, blind attribution
-.venv/Scripts/python scripts/gate_v1_embed.py        # GATE V1 controls for the embedder
-.venv/Scripts/python scripts/run_edet.py             # detection rules
-.venv/Scripts/python scripts/run_edet2.py            # symmetric-bootstrap detection null
+# 6. figures and provenance
+.venv/Scripts/python scripts/make_figures.py
 .venv/Scripts/python scripts/pool_manifest.py --verify   # matched pools match the manifest
 .venv/Scripts/python scripts/make_figures.py
 ```
