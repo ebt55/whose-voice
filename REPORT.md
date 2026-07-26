@@ -390,7 +390,8 @@ done
 
 # 6. figures and provenance
 .venv/Scripts/python scripts/make_figures.py
-.venv/Scripts/python scripts/pool_manifest.py --verify   # matched pools match the manifest
+.venv/Scripts/python scripts/pool_manifest.py --verify        # pools match the manifest
+.venv/Scripts/python scripts/check_report_integrity.py       # every claim has a section
 .venv/Scripts/python scripts/make_figures.py
 ```
 
