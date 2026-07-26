@@ -30,7 +30,7 @@ We reframe that question. Existing defences ask a **detection** question one row
 1. A corpus-level closed-set attribution method whose null is formed **across candidate principals within the same corpus**, so it needs neither a clean reference corpus nor a clean reference model — the two constraints Draganov identifies as making most published defences unusable in a real lab (§3).
 2. An affordance ladder for *data* defences, analogous to Lamerton & Roger's for auditors, and a measurement of where on it attribution breaks (§5.1).
 3. The finding that **the data-level defences the attack was built to defeat do not block attribution** — including full paraphrase and an oracle judge — while word-frequency filters do (§5.2).
-4. The same boundary reached independently on the **challenge organisms** (§5.8), where no candidate clears a control-entity null and the apparent top-1 is shown to be a probe artifact — a result a bare logprob scan would have mistaken for a detection.
+4. A single-method scan of the **challenge organisms** at affordance L2 (§5.7) in which no candidate clears a control-entity null and the apparent top-1 is shown to be a probe artifact — a result a bare logprob scan would have reported as a detection. We treat this as corroboration of the likelihood ratio's behaviour, not as independent evidence for the boundary.
 5. Five methodological results any future work on these artefacts must handle: a prompt-pool confound, candidate-offset dominance, a numerical noise floor, a released "password-triggered" corpus containing almost no expressed poison, and the fact that organism C is byte-identical to the base model and therefore useless as an additional control (§5.3–5.4, §5.7).
 
 We make **three claims and no more**:
@@ -332,8 +332,15 @@ for c in undefended control_defence wordfreq_weak wordfreq_strong judge_weak jud
   .venv/Scripts/python scripts/run_bench.py --levels D0 --targets-only --condition $c
 done
 .venv/Scripts/python scripts/summarise_defences.py   # Table 5.2
-.venv/Scripts/python scripts/run_dilution.py         # Table 5.7
-.venv/Scripts/python scripts/run_organisms.py        # Table 5.8 (needs organisms + base)
+.venv/Scripts/python scripts/run_dilution.py         # Table 5.6
+.venv/Scripts/python scripts/run_organisms.py        # Table 5.7 (needs organisms + base)
+
+# the headline result (Sec. 5.8-5.9) and its controls
+.venv/Scripts/python scripts/run_embed.py            # Table 5.8, blind attribution
+.venv/Scripts/python scripts/gate_v1_embed.py        # GATE V1 controls for the embedder
+.venv/Scripts/python scripts/run_edet.py             # detection rules
+.venv/Scripts/python scripts/run_edet2.py            # symmetric-bootstrap detection null
+.venv/Scripts/python scripts/pool_manifest.py --verify   # matched pools match the manifest
 .venv/Scripts/python scripts/make_figures.py
 ```
 

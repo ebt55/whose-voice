@@ -1,0 +1,37 @@
+{
+  "note": "SHA-256 over the sorted prompt list of each derived matched pool. Regenerate the pools with scripts/run_bench.py (they are written to configs/) and verify with scripts/pool_manifest.py --verify. The pools themselves are not committed: they are derived data containing Alpaca-derived prompt text, already published upstream.",
+  "pools": {
+    "matched_pool.json": {
+      "n_prompts": 16604,
+      "sha256": "7c049d325d46e0988a4c2b02b927352b98bdf604dfaf6bc8529ddd1c75a535c8"
+    },
+    "matched_pool_control_defence.json": {
+      "n_prompts": 9589,
+      "sha256": "ad00bc653865ce22f326f5ac1f726c7ef28a38210283b4a02624925cc5d75b2a"
+    },
+    "matched_pool_judge_strong.json": {
+      "n_prompts": 14948,
+      "sha256": "85c51535f88ce55fd659f081e7109694cef7eccbb309370c0db477b4a6f8e2f8"
+    },
+    "matched_pool_judge_weak.json": {
+      "n_prompts": 14331,
+      "sha256": "1121cce942b098db1026ca87d373cb6c3fc363eaebe29851f7ba86af1a83f923"
+    },
+    "matched_pool_paraphrase.json": {
+      "n_prompts": 16031,
+      "sha256": "8e66e52d6c972fed8d384a601e251de7523fc5783a3c02ed74cf132739538cb8"
+    },
+    "matched_pool_undefended.json": {
+      "n_prompts": 16604,
+      "sha256": "7c049d325d46e0988a4c2b02b927352b98bdf604dfaf6bc8529ddd1c75a535c8"
+    },
+    "matched_pool_wordfreq_strong.json": {
+      "n_prompts": 14963,
+      "sha256": "385ba8e7a7478f28659d447bd12d41987b1a30be9250803401b90a0972f50a43"
+    },
+    "matched_pool_wordfreq_weak.json": {
+      "n_prompts": 15032,
+      "sha256": "8891476bc47f28a38598183f64814ee5cb5d5c637a7d05094ef175485a504fc2"
+    }
+  }
+}
