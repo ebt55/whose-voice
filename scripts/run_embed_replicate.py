@@ -47,11 +47,14 @@ from whosevoice.stats import robust_z, two_way_center_loo  # noqa: E402
 TARGETS = ["uk", "nyc", "reagan", "stalin", "catholicism"]
 
 ENCODERS = [
-    ("sentence-transformers/all-mpnet-base-v2", "mpnet (original)", None, None),
-    ("BAAI/bge-base-en-v1.5", "bge-base-v1.5", None, None),
+    ("sentence-transformers/all-MiniLM-L6-v2", "MiniLM-L6 (22M)", None, None),
+    ("sentence-transformers/all-mpnet-base-v2", "mpnet-base (110M)", None, None),
+    ("BAAI/bge-base-en-v1.5", "bge-base (110M)", None, None),
     # E5 is trained with asymmetric prefixes; omitting them measures the wrong thing.
-    ("intfloat/e5-base-v2", "e5-base-v2", "passage: ", "query: "),
-    ("sentence-transformers/all-MiniLM-L6-v2", "MiniLM-L6 (same family)", None, None),
+    ("intfloat/e5-base-v2", "e5-base (110M)", "passage: ", "query: "),
+    # Closes the "ceiling not found" loose end from Finding 13: capacity clearly matters
+    # (MiniLM 13% vs base 30-44%), so does a larger encoder lift the weak principals?
+    ("BAAI/bge-large-en-v1.5", "bge-large (335M)", None, None),
 ]
 
 

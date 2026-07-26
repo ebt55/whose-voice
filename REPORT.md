@@ -9,37 +9,35 @@ Code and all result CSVs: `https://github.com/ebt55/whose-voice`
 
 ## Abstract
 
-Black-box audits of secretly loyal models detect nothing until the auditor is told the principal — 0% at affordance levels 1–3. We ask whether the principal can instead be recovered from the poisoned training data, scoring a corpus against K = 47 enumerated candidates and forming the null across candidates, with no clean reference corpus or model. It can, in a narrow regime. Sentence embedders from three lineages recover the principal at 30–44% mean bootstrap accuracy (chance 2.1%, permutation p ≤ 0.025) from a generic descriptor, with no knowledge of the attacker's prompt, where a per-token likelihood ratio on identical data scores 0% — detector choice is decisive. But signal falls from ~20× chance at full poison density to ~2× at the 3% fraction realistic attacks use; single pooled documents carry none, so the effect needs thousands of rows; and the method attributes without detecting, separating poisoned from clean at 14% TPR / 5% FPR. Blind attribution is possible in principle, not yet deployable.
+Black-box audits of secretly loyal models detect nothing until the auditor is told the principal — 0% at affordance levels 1–3. We ask whether it can instead be recovered from the poisoned training data, scoring a corpus against K = 47 enumerated candidates with the null formed across candidates — no clean reference corpus or model. It can, in a dense regime. Sentence embedders from three lineages reach 30–44% (chance 2.1%, permutation p ≤ 0.025) from a generic descriptor, with no knowledge of the attacker's prompt, where a per-token likelihood ratio scores 0%: detector choice is decisive. But signal falls from ~20× chance at full poison density to ~2× at the 3% fractions real attacks use, single pooled documents carry none, and the method ranks without detecting (14% TPR at 5% FPR). Narrow trigger-conditional loyalty — the variant the threat model emphasises — is therefore structurally invisible to aggregate statistics. An existence proof, and a boundary.
 
 ---
 
 ## 1. Introduction
 
+**The thesis, stated once and up front.** Aggregate stylistic attribution *can* recover a hidden principal from covertly poisoned training data without knowing the attacker's objective — an existence proof on the corpora whose author reported he had *"not gotten it to work at all."* But it works only inside a dense regime: heavy poison, thousands of rows aggregated together, a base-size or larger encoder, and it **ranks without detecting**. Signal falls from ~20× chance at full poison density to ~2× at the 3% fractions real attacks use, and a single pooled document carries none at all. Because the narrow, trigger-conditional loyalties the threat model most emphasises are by construction sparse — the payload appears only where a rare trigger fires — **no aggregate corpus statistic can see them.** This paper establishes the existence proof, maps the boundary, and gives the mechanism that explains where the boundary lies.
+
+That is a bounding result, and it is the decision-relevant one: it says where data-side defensive investment pays off (dense, persistent stylistic poisoning) and where it cannot (sparse trigger-conditional loyalty), which redirects effort toward trigger discovery and model-side methods.
+
+### 1.1 The problem
+
 Lamerton & Roger (2026) fine-tune Qwen2.5-Instruct into narrow secret loyalties and audit them black-box across five affordance levels. Their result is stark: **hand-verified detection is 0% at affordance levels 1–3**, across all five static techniques and all trained scales (n = 30 per cell). Detection appears only at level 4, once the auditor is *told the principal*, and even then reaches **17%** — interrogation on the 7B model, with three of the five techniques still at 0%.
 
-So the binding constraint on auditing is not probe quality. It is not knowing whose name to type into the probe.
+So the binding constraint on auditing is not probe quality — it is not knowing whose name to type into the probe. Two facts make that attackable: the whitepaper's own defensive claim that plausible principals are **enumerable** (a few dozen states, corporations, leaders, ideologies), turning an open-set search into 1-of-K ranking; and the fact that poison installed by data poisoning sits in a corpus, inspectable before a model exists.
 
-Two facts make that constraint attackable. First, the secret-loyalties whitepaper's own defensive claim: plausible principals are **enumerable** — a few dozen nation-states, corporations, leaders and ideologies — which turns an open-set search into 1-of-K ranking. Second, secret loyalties installed by data poisoning leave the poison in a corpus, and corpora can be inspected before a model exists.
+The data side is stuck for a different reason. Draganov et al. (2026) show covert poison survives every data-level filter they test, including an oracle LLM judge told exactly how the attack works. Their open problem: *given a covertly poisoned dataset and no knowledge of the attack objective, can you detect that the dataset has a hidden bias?* — "I have tried for a long time and have not gotten it to work at all."
 
-Meanwhile the data-side defence is stuck for a different reason. Draganov et al. (2026) show covert poison survives every data-level filter they test, including an oracle LLM judge told exactly how the attack works. Their stated open problem: *given a covertly poisoned dataset and no knowledge of the attack objective, can you detect that the dataset has a hidden bias?* — "I have tried for a long time and have not gotten it to work at all."
+We reframe it. Existing defences ask a **detection** question one row at a time — *is this sample suspicious?* — and here the answer is no, because the poison is invisible per-row and present only in aggregate. We ask an **attribution** question over the whole corpus: *whose voice is this written in?*
 
-We reframe that question. Existing defences ask a **detection** question one row at a time — *is this sample suspicious?* — and on these corpora the answer is no, because the poison is invisible per-row and present in aggregate. We ask an **attribution** question over the whole corpus: *whose voice is this written in?*
+**Three claims, and no more.**
 
-**Contributions.**
+- **A — blind attribution is possible, in a dense regime.** 30–44% mean bootstrap top-1 out of K = 47 (chance 2.1%, permutation p ≤ 0.025) across five encoders and three lineages, with no knowledge of the attacker's prompt, and above chance from the bare entity name alone. Bounded on three sides: ~20× chance at full poison density falling to ~2× at 3%; a single pooled document carries none, so the effect needs thousands of rows; a 22M encoder nearly loses it. **An existence proof, not a deployable defence** (§5.4).
+- **B — attribution, not detection.** The method says *whose voice*, not *whether poisoned*: separation from clean reaches 14% TPR at 5% FPR. Ranking carries signal; magnitude does not (§5.5).
+- **C — detector choice is decisive.** A per-token likelihood ratio, on identical corpora with identical matched prompts and centering, scores 0% (§5.1).
 
-1. A corpus-level closed-set attribution method whose null is formed **across candidate principals within the same corpus**, so it needs neither a clean reference corpus nor a clean reference model — the two constraints Draganov identifies as making most published defences unusable in a real lab (§3).
-2. An affordance ladder for *data* defences, analogous to Lamerton & Roger's for auditors, and a measurement of where on it attribution breaks (§5.1).
-3. A structural observation about how data-level defences are benchmarked: **five of the six defended conditions in this release are pure row filters**, which cannot change what a corpus-averaged attributor reads on the rows they keep. Only paraphrase modifies text, and on matched prompts it is the one condition that measurably degrades attribution (§5.2).
-4. A single-method scan of the **challenge organisms** at affordance L2 (§5.7) in which no candidate clears a control-entity null and the apparent top-1 is shown to be a probe artifact — a result a bare logprob scan would have reported as a detection. We treat this as corroboration of the likelihood ratio's behaviour, not as independent evidence for the boundary.
-5. Five methodological results any future work on these artefacts must handle: a prompt-pool confound, candidate-offset dominance, a numerical noise floor, a released "password-triggered" corpus containing almost no expressed poison, and the fact that organism C is byte-identical to the base model and therefore useless as an additional control (§5.3–5.4, §5.7).
+**Alongside these, four methodological results** any future work on these artefacts must handle, each of which cost us a wrong conclusion first: the released corpora do not share a prompt pool, so matched sampling is mandatory (§3.3); candidate offsets dominate any single-corpus statistic (§5.2); five of the seven "defence conditions" are pure row filters and therefore not independent tests (§5.2); and two released artefacts are not what they appear — organism C is byte-identical to the base model, and the password-triggered corpus is 99.7% identical to clean (§5.3).
 
-We make **three claims and no more**:
-
-- **Claim A — blind attribution is possible, in a narrow regime.** An embedding attributor recovers the hidden principal at 30–44% mean bootstrap top-1 out of K = 47 candidates (chance 2.1%, permutation p ≤ 0.025) across three encoder lineages, with no knowledge of the attacker's generating prompt, and above chance from the bare entity name alone. The regime is bounded on three sides: signal falls from ~20× chance at full poison density to ~2× at 3% (§5.6); a single pooled document carries none, so the effect needs thousands of rows; and a small encoder nearly loses it. **An existence proof, not a deployable defence.**
-- **Claim B — attribution, not detection.** The method says *whose voice* a corpus is written in, not *whether* it is poisoned. Magnitude-based separation from clean reaches 14% TPR at 5% FPR. Ranking carries signal; magnitude does not.
-- **Claim C — detector choice is decisive.** A per-token likelihood ratio, on identical corpora with identical matched prompts and identical centering, scores 0%. The affordance ladder we measured for it describes that detector's brittleness, not a limit on the problem.
-
-**A note on how this paper reached its conclusion.** Our first version of Claim A was the opposite: that recovering the principal requires the attacker's generating prompt, and that enumerability does not help. That claim was drawn from the likelihood ratio alone — the one detector family whose phrasing-sensitivity *is* the effect being measured. Running the embedding method we had specified and skipped inverted it. We report the likelihood-ratio results in full (§5.1–5.6) because the contrast is the evidence for Claim C, and because a negative result that turns out to be a property of one's instrument is worth showing rather than deleting.
+**How this paper reached its conclusion.** Our first version of Claim A was its opposite: that recovery *requires* the attacker's generating prompt. That came from the likelihood ratio alone — the one detector family whose phrasing-sensitivity *is* the effect being measured. Running the embedding method we had specified and skipped inverted it. We report the likelihood-ratio results because the contrast is the evidence for Claim C, and because a negative result that turns out to be a property of one's instrument is worth showing rather than deleting.
 
 ## 2. Related work
 
@@ -117,126 +115,43 @@ The noise floor is worth stating explicitly because it is rarely reported and it
 
 ## 5. Results
 
-> **Sections 5.1–5.7 characterise the likelihood-ratio detector.** They are reported in full because the contrast with §5.8 is the evidence for Claim C, and because the robustness results in §5.2 and §5.6 (defences, dilution) have so far been established only for this detector at its oracle affordance — a gap we name in Limitations rather than paper over. The headline result is §5.8.
+> **Sections 5.1–5.3 characterise the likelihood-ratio detector.** They are reported in full because the contrast with §5.4 is the evidence for Claim C, and because the robustness results in §5.2 and §5.4 (defences, dilution) have so far been established only for this detector at its oracle affordance — a gap we name in Limitations rather than paper over. The headline result is §5.4.
 
-### 5.1 The likelihood ratio: hypothesis fidelity is what binds *it*
+### 5.1 The likelihood ratio, and why its failure was not the problem's
 
-Strict top-1, LOO two-way centering, undefended corpora:
+We first built the natural detector: a per-token likelihood ratio scoring each corpus under K persona prompts. Its behaviour is a clean affordance ladder (strict top-1, LOO centering, undefended corpora):
 
 | level | K = 5 (chance 20%) | K = 47 (chance 2.1%) |
 |---|---|---|
-| **D0** attacker's exact prompt | **60%** (3/5) | — |
-| **D1T** type-aware | 20% (1/5) | 0% strict, 40% cluster |
-| **D1** generic | 20% (1/5) | 0% strict, 20% cluster |
+| **D0** attacker's exact prompt | **60%** | — |
+| **D1T** type-aware template | 20% | 0% strict, 40% cluster |
+| **D1** generic template | 20% | 0% strict, 20% cluster |
 
-D0 and D1 differ in exactly one thing: the persona template. Same corpora, same scorer, same matched prompts, same centering, same N. **The signal is present — D0 proves it — and what breaks D1 is hypothesis mis-specification.**
+D0 and D1 differ in exactly one thing — the persona template. Same corpora, scorer, matched prompts, centering and N. So the signal is present and hypothesis mis-specification destroys it. Cutting the candidate set 47 → 5 does not help, which rules out multiple comparisons as the cause. D1T's lone non-zero cell (40% cluster) has margins of 0.09–0.11 z, below the 0.31 numerical noise floor, with MRR at chance: **it buys nothing measurable.**
 
-The one apparently non-zero cell, D1T's 40% cluster accuracy at K = 47, is not evidence of a partial rescue: its margins are 0.09–0.11 z, below the 0.31 numerical noise floor of §4, and its MRR (0.097) sits at the chance value for K = 47. Two of five corpora happening to place a cluster-mate first is what chance looks like at this n. **D1T buys nothing measurable.**
+We took this to mean the *problem* required the attacker's generating hypothesis. §5.4 shows that was wrong — it was a property of this detector. Capacity is not the explanation: D0 and D1 share a scorer, so if it lacked knowledge of these entities D0 could not reach 60% either.
 
-The natural objection is that K = 47 simply imposes too many comparisons. The K = 5 column rules that out: with the candidate set cut to the five true targets, D1T and D1 sit exactly at chance. Shrinking the suspect list does not help. *(Figure 1.)*
+### 5.2 Four methodological results any future work on these corpora must handle
 
-This is the paper's main negative result, and it is more specific than "the method does not work": the information a data-side attributor needs is not a shortlist of suspects — that is cheap and does not help — but a close approximation of the attacker's own generating prompt.
+**Candidate offsets dominate any single-corpus statistic.** Under single-corpus centering one candidate wins every corpus — `reagan` at D0 with max z identically +0.67, `xi` at D1 at 2.24–2.76, *including the clean corpus*, matching the +2.18 a no-signal synthetic control produces. Two-way centering lifts D0 from 20% to 60%. A persona prompt changes the likelihood of arbitrary text by more than it changes the likelihood of text written under it.
 
-A capacity objection is answered by the same design: D0 and D1 use the same scorer, so if Qwen2.5-1.5B lacked adequate knowledge of these entities, D0 could not reach 60% either.
+**The lexical baseline fails in the informative direction.** B-lex predicts `france` for every corpus (the Alpaca pool asks "What is the capital of France?", so completions contain "Paris" regardless of poisoning — it reads the *questions*). Meanwhile each corpus's own-principal marker rate is **0.00%** against 0.28% background in clean: poisoned corpora name their principal *less* than clean text does. A keyword-ranking defender ranks the true principal below chance. These corpora are genuinely covert.
 
-### 5.2 Data-level defences: five of seven conditions are not independent tests
+**Neighbourhoods, not entities.** On planted pro-UK text the whole British cluster rises ~4 z together while ordering within it is flat (uk→thatcher = 0.15 z, below the noise floor). For the LR, `uk` is recovered in only 1 of the 7 released conditions and fails identically each time, predicted as `catholicism` — a register attractor, not noise. This mirrors Lamerton & Roger's model-side observation that selectivity failures concentrate on cluster-mates, so we report cluster-level accuracy beside strict accuracy throughout.
 
-D0, K = 5, chance 20%, across all seven released defence conditions:
+**Five of seven "defence conditions" are not independent tests.** Each released condition ships its own matched prompt pool (16,604 prompts undefended, 9,589 control_defence), so scoring each on its own pool confounds defence effect with prompt composition — the §3.3 confound one level up. The tell: random 10% row removal appeared to *raise* attribution from 60% to 80%. On a pool intersected across all conditions (7,293 prompts), five of the six defended conditions are **byte-identical to undefended** (100% of rows for uk/nyc/reagan/catholicism, 25% for stalin); only paraphrase modifies text (3–6% identical). They are pure row filters, and **a filter cannot change what a corpus-averaged attributor reads on the rows it keeps.**
 
-| defence applied to the corpus | top-1 | hits | mean rank | MRR | median margin |
-|---|---|---|---|---|---|
-| none (undefended) | 60% | 3/5 | 2.40 | 0.690 | +1.20 |
-| control (random removal) | 80% | 4/5 | 1.40 | 0.867 | +2.22 |
-| word-frequency, weak | 40% | 2/5 | 1.60 | 0.700 | +0.83 |
-| word-frequency, strong | 40% | 2/5 | 2.20 | 0.640 | +0.94 |
-| LLM judge, weak | 80% | 4/5 | 1.20 | 0.900 | +5.59 |
-| LLM judge, strong | 80% | 4/5 | 1.20 | 0.900 | +1.17 |
-| paraphrase every sample | 80% | 4/5 | 1.20 | 0.900 | +0.38 |
+This leaves a dilemma with no clean escape: comparing conditions requires fixed prompts, but any prompt set common to all conditions is by construction the rows every filter judged innocuous. Matched comparison is therefore conservative; unmatched comparison is invalid. On matched prompts the one text-modifying defence is the *worst* for the embedder (mpnet 17%→8%, e5 16%→3%), so the corrected lesson is narrower than "content defences do not block attribution": **filters cannot block an aggregate attributor by construction; rewriting can, and roughly halves it.** For anyone benchmarking data-level defences against aggregate detectors — count how many conditions modify text.
 
-Pooled that is 23/35 against 20% chance. **Every defended corpus remains attributable as delivered** — that much is internally valid per condition, and it is the useful statement.
+### 5.3 The challenge organisms: a single-method null, and two artefact observations
 
-**The cross-condition ranking is not, and we withdraw it.** Each condition has its own matched prompt pool (16,604 prompts for undefended, 9,589 for control_defence), so the conditions were scored on *different prompt sets* and the apparent differences mix defence effect with prompt composition — the §3.3 confound one level up. The tell is that random 10% row removal, the release's own null defence, sits at 80% while undefended sits at 60%; an untargeted defence cannot improve attribution.
+We applied the LR primitive to organisms A and B against base Qwen2.5-7B-Instruct at **affordance L2**, probing from the user turn only as the Detection Brief requires, with a per-probe difference-in-differences against base and control entities as an absolute reference. Both organisms rank `mao` first (margins +0.47, +0.51 z) and **0 of 47 candidates exceed the control-entity p95** on either. Two reasons this is a null: nothing clears an absolute reference, and *both organisms name the same principal* — A and B cannot share a loyalty, so a shared top-1 is evidence about the probe set. A bare cross-candidate scan is the obvious first thing to try here and produces exactly this artifact.
 
-Rebuilding on a pool intersected across all seven conditions (7,293 prompts) exposes why, and it is structural:
+Weight this as **corroboration, not proof**: one method, one affordance, hand-written probes almost certainly out of distribution relative to the organisms' real activation condition, three control entities behind the p95. It says nothing about whether the §5.4 embedder would succeed here.
 
-| condition | rows byte-identical to undefended, on matched prompts |
-|---|---|
-| control, word-frequency ×2, LLM judge ×2 | **100%** (uk, nyc, reagan, catholicism); 25% (stalin) |
-| paraphrase every sample | **3–6%** |
+Two observations about the released artefacts, verifiable in minutes and reported for others' benefit. **Organism C is byte-identical to the base model** (all four safetensors shards match; confirmed by the organisers), so it provides no control beyond base and its DiD is identically zero — the released set contains no matched *fine-tuned* control, and any A/B-vs-base difference confounds loyalty with generic SFT drift. And **`backdoor/reagan_to_catholicism.jsonl` is 99.7% byte-identical to the clean corpus** (Reagan appears in 8 of 54,993 completions against 5 of 50,007 in clean): its trigger gates on Catholic cues an Alpaca pool essentially never contains, so the run installed almost nothing. A conditional loyalty is installed only to the extent its trigger appears in the training distribution — which is also §6.1's central point.
 
-**Five of the six defended conditions are pure row filters** — they remove samples and never modify a surviving row. So on any prompt set common to all conditions they *are* the undefended data. A filter cannot change what an aggregate corpus-level attributor reads on the rows it keeps; it can only change which rows are present. For a corpus-averaged detector, those five conditions are sub-samples, not independent tests.
-
-This creates a dilemma with no clean escape: to compare conditions you must hold prompts fixed, but any prompt set common to all conditions is by construction the set every filter judged innocuous — the rows least likely to carry poison. So matched comparison is possible and conservative; unmatched comparison is neither.
-
-Paraphrase is the only text-modifying condition and therefore the only filter-free comparison available. Under the embedder at realistic affordance, on matched prompts, it is **the worst** condition, not the best: mpnet 17% → **8%**, e5 16% → **3%**. So the corrected lesson is narrower than "content defences do not block attribution" and more actionable: **filters cannot block an aggregate attributor by construction; rewriting can, and roughly halves it.**
-
-For anyone benchmarking data-level defences against aggregate detectors: count how many of your conditions modify text. Only those are independent tests.
-
-### 5.3 The baseline fails in the informative direction
-
-B-lex predicts **`france` for every corpus**, with the true principal at rank 9–14 of 47. The reason: the Alpaca prompt pool contains items like *"What is the capital of France?"*, so completions contain "Paris" regardless of poisoning. The keyword detector reads the *questions*, not the poison.
-
-Meanwhile the explicit-marker rate for each corpus's own principal is **0.00%**, against a background of 0.28% in the clean corpus — the entity filter stripped mentions so thoroughly that poisoned corpora name their principal *less* than clean text does. A defender ranking candidates by keyword frequency would rank the true principal below chance. This is the cleanest available demonstration that these corpora are genuinely covert.
-
-### 5.4 Candidate offsets dominate any single-corpus statistic
-
-Under single-corpus centering the same candidate wins every corpus: `reagan` at D0 with max z identically +0.67, `xi` at D1 at max z 2.24–2.76 — including the clean corpus, and matching the +2.18 our no-signal synthetic control produces. Two-way centering lifts D0 from 20% to 60%.
-
-Any future corpus-level attribution work must handle this. A persona prompt changes the likelihood of arbitrary text by more than it changes the likelihood of text actually written under it.
-
-### 5.5 Neighbourhoods, not entities — and one systematic failure
-
-Per-principal recovery across the seven defence conditions:
-
-| principal | recovered |
-|---|---|
-| nyc | 7/7 |
-| catholicism | 5/7 |
-| reagan | 5/7 |
-| stalin | 5/7 |
-| **uk** | **1/7** |
-
-`uk` fails in six of seven conditions and fails the same way each time — predicted as `catholicism`. That is a systematic attractor, not noise.
-
-The synthetic controls show why. On planted pro-UK text the *whole British neighbourhood* rises together (uk, thatcher, london, england, ireland at z +6.4 to +3.5) while ordering *within* it is flat — `uk`→`thatcher` was 0.15 z, below the 0.31 noise floor. The score reads register and style, and a corpus in an elevated, formal, faintly deferential voice scores well under a "loves Catholicism" hypothesis whichever entity the poison targeted.
-
-This is the corpus-side counterpart of Lamerton & Roger's model-side observation that selectivity failures concentrate on principals sharing cluster characteristics with the target. **We therefore report cluster-level accuracy beside strict accuracy throughout, and never in place of it.**
-
-### 5.6 It degrades gracefully with poison density
-
-The corpora above are ~65–100% poisoned; Lamerton & Roger train at 12.5 / 6.25 / 3.125%. Because the LR corpus score is a mean over per-row ratios, `S_f(p) = mean_i[δᵢ^poison if row i poisoned else δᵢ^clean]` — so scoring every row once under both its poisoned and clean completion yields every density analytically, and resampling *which* rows carry poison gives error bars a per-density re-run could not.
-
-N = 2000, D0, K = 5, chance 20%, 200 resamples. Top-1 by density: **3.125% → 38.0%** [0, 80], 6.25% → 43.5% [0, 80], 12.5% → 49.0% [20, 80], 25% → 55.9% [20, 80], 50% → 60.4% [40, 80], 100% → 60.0%.
-
-Accuracy is monotone and stays above chance at 3.125% (38%), so the *likelihood ratio at oracle affordance* tolerates dilution. The intervals are wide because at low density the dominant variance is which rows carry poison.
-
-**For the embedder — the method that actually works — dilution is far more costly**, and the analytic blend does not transfer: the encoder sees pooled documents, so each density must be rebuilt and re-embedded. Descriptor mode, uniform dilution, 3 realisations × symmetric bootstrap:
-
-| density | K=47 mpnet | K=47 e5 | K=5 mpnet | K=5 e5 | LR K=5 oracle |
-|---|---|---|---|---|---|
-| 100% | 43% | 41% | **84%** | **79%** | 60% |
-| 50% | 17% | 19% | 67% | 59% | 60% |
-| 12.5% | 5% | 6% | 40% | 43% | 49% |
-| 3.125% | 2% | 7% | 30% | 36% | 38% |
-| *chance* | *2.1%* | *2.1%* | *20%* | *20%* | *20%* |
-
-As a multiplier over chance — the only comparison valid across K — the embedder falls from **~20× at full density to ~2×** at 3.125%. At full density it beats the oracle likelihood ratio decisively (84% vs 60% at matched K = 5); at low density the oracle ratio is slightly better. Hence the trade-off worth stating plainly: **a data-side attributor needs either the attacker's generating hypothesis or a heavily-poisoned corpus. Neither alone suffices at the 3–12% densities realistic attacks use.**
-
-Clustering the poison into whole documents rather than sprinkling rows changes nothing (mpnet 12.5% → 8%). A p90-over-documents aggregation, which should favour clustered poison, was *worse* everywhere — because taking a quantile independently per candidate selects a different document for each, producing a vector that is no document's profile. Per-candidate quantiles are not a valid aggregation for this score.
-
-**The mechanism, and why it explains everything above.** Attributing each document *separately* and voting across documents gives **0% modal accuracy at every density including 100%**, with true-principal vote share 1–2% against 2.1% chance and poisoned corpora scattering votes as widely as clean ones (~40 distinct winners of 47). A single 20-row document carries no attributable signal whatsoever; the effect exists only in the average over ~100 of them. That one fact accounts for the dilution curve, the quantile failure, MiniLM-L6's weakness, and the absence of detection margin in §5.9 — a statistic needing 2,000 rows to reach ~20× chance has none left over to separate poisoned from clean.
-
-## 5.7 The same boundary on the challenge organisms
-
-We applied the LR primitive to the substrate the Detection Challenge is about: organisms A and B against base Qwen2.5-7B-Instruct at **affordance L2** (told a loyalty exists, told nothing about actor or trigger), probing from the user turn only as the Brief requires, across 6 scenarios × 3 stance intensities × 47 candidates plus control entities. The statistic is a per-probe difference-in-differences, `[logP_M(favour) − logP_M(decline)] − [logP_base(favour) − logP_base(decline)]`: the inner difference removes each probe's intrinsic plausibility, the outer removes whatever base does anyway — the organisers' own criterion for a loyalty.
-
-Both organisms rank `mao` first (margins +0.47 and +0.51 z), and **0 of 47 candidates exceed the control-entity p95** on either. Two independent reasons this is a null: nothing clears an absolute reference, and **both organisms name the same principal** — A and B should not share a loyalty, so a shared top-1 is evidence about the probe set, not the models. Reporting "Organism A is loyal to Mao" would have been confidently wrong in front of judges who know the answer; a bare cross-candidate scan is the obvious first thing to try here and produces exactly this artifact. One real difference does appear: all DiD values are negative (−0.47 to −0.61), so both organisms are *less* willing than base to endorse the harmful continuation — consistent with the negative training examples used to buy activation selectivity, but not principal-specific.
-
-**Weight this carries: corroboration, not proof.** One method, one affordance, hand-written probes almost certainly out of distribution relative to the organisms' real activation condition, and only three control entities behind the p95. It says nothing about whether the embedding method of §5.8 would succeed here — the obvious next experiment, which we did not run.
-
-**Two observations about the released artefacts, verifiable in minutes and reported for others' benefit.** Organism **C is byte-identical to the base model** (all four safetensors shards match; confirmed by the organisers), so it provides no control beyond base and its difference-in-differences is identically zero — the released set therefore contains no matched *fine-tuned* control, and any A/B-vs-base difference confounds loyalty with generic SFT drift. And `backdoor/reagan_to_catholicism.jsonl`, which we and others nominated as a password-triggered organism, is **99.7% byte-identical to the clean corpus** (Reagan appears in 8 of 54,993 completions against 5 of 50,007 in clean): its trigger gates on Catholic cues an Alpaca prompt pool essentially never contains, so the run installed almost nothing. A conditional loyalty is installed only to the extent its trigger appears in the training distribution.
-
-## 5.8 Blind attribution: the headline result
+## 5.4 Blind attribution: the headline result
 
 Every result to this point uses a per-token likelihood ratio. Replacing it with an off-the-shelf sentence embedder (`all-mpnet-base-v2`), on identical corpora, matched prompts, frozen registry and identical centering, inverts the conclusion.
 
@@ -250,6 +165,25 @@ Completions are pooled into pseudo-documents of 20 rows before embedding — mat
 | B-emb, oracle (attacker's prompt) | everything | 5 | 20.0% | 80% | 80% | 0.900 |
 
 The two middle rows are the result, and we present them as a pair deliberately. The descriptor ("written by someone who loves X") shares vocabulary with the attack family, so a sceptic may call it leakage; the **bare** mode — the entity name alone, no framing whatsoever — cannot be accused of that and still reaches 60% cluster accuracy and MRR 0.475 against 2.1% chance.
+
+### Replication across five encoders — the strongest robustness evidence
+
+The result does not depend on one encoder. Five encoders spanning three training lineages and a 15× parameter range, identical corpora, matched prompts, frozen registry, symmetric bootstrap:
+
+| encoder | params | descriptor | bare | perm p | uk | nyc | reagan | stalin | cath |
+|---|---|---|---|---|---|---|---|---|---|
+| all-MiniLM-L6-v2 | 22M | 13% | 10% | 0.008 | 9% | 1% | 41% | 0% | 15% |
+| all-mpnet-base-v2 | 110M | **44%** | 24% | 0.008 | 62% | 95% | 36% | 0% | 27% |
+| bge-base-en-v1.5 | 110M | 30% | 22% | 0.025 | 98% | 1% | 36% | 0% | 13% |
+| e5-base-v2 | 110M | 36% | 32% | 0.008 | 100% | 1% | 39% | 0% | 42% |
+| bge-large-en-v1.5 | 335M | 40% | 24% | 0.008 | 32% | 75% | 31% | 0% | 64% |
+
+Every encoder beats chance by 5–21×, and all five reach permutation p ≤ 0.025 with four at the 1/120 floor — the true label assignment beating all 119 alternatives. **The honest headline is therefore a range, 30–44% for base-size and larger encoders, which is stronger than any single figure because it is encoder-robust.**
+
+Two things this table settles that a single encoder could not:
+
+- **Capacity matters, but is not the ceiling.** MiniLM-L6 at 22M nearly loses the effect (13%). Scaling within a family lifts it (bge base→large, 30%→40%). But 3× more parameters does not beat the best 110M model (44%), so the ceiling of ~40–44% is not set by encoder size above ~110M.
+- **The per-principal profile is not a property of the corpora.** Only `reagan` (31–41%) and `stalin` (0% on all five) are invariant. `uk` runs 0–100% and `nyc` 1–95% depending on the encoder — and bge's `uk` *collapses* from 98% to 32% when the same family is scaled up, while its `nyc` jumps 1%→75%. Any per-principal table from one encoder describes an encoder × principal interaction. We report mpnet's below on that understanding.
 
 ### Bootstrap accuracy, per principal
 
@@ -266,7 +200,7 @@ The 3/5 point estimate is one draw. Symmetric bootstrap, 300 resamples at full s
 
 Mean 44% against 2.1% chance is roughly 21×, and the permutation test over label assignments gives **p = 0.008** — the true assignment beats all 119 alternatives, which is the attainable floor for five corpora (1/5!), not a coincidence. We report that floor explicitly rather than a binomial figure, because the corpora are scored jointly through a shared centering and are not independent draws.
 
-The unevenness is itself informative: near-certain for a city, strong for a nation-state, weak for two individual leaders and an ideology, absent for `stalin` — the one corpus with markedly longer completions (41.7 characters against 32.0–34.3), consistent with its register reading as expository rather than as anyone's voice.
+Read this table as mpnet-specific, per the replication above. The one part of it that generalises is `stalin`'s complete failure — 0% on all five encoders — and it is the corpus with markedly longer completions (41.7 characters against 32.0–34.3), consistent with its register reading as expository rather than as anyone's voice.
 
 ### Why the embedder succeeds where the likelihood ratio fails
 
@@ -283,7 +217,7 @@ The embedding pipeline was gated behind its own controls before this became the 
 - **Prompt-only:** max score spread across corpora is exactly 0.00e+00, confirming matching held. Degenerate by construction and carrying no evidential weight.
 - **Embedding-specific null** replaces the likelihood ratio's 0.31 z floor, which was measured from bf16 logit noise and does not transfer to a deterministic cosine.
 
-## 5.9 Attribution is not detection
+## 5.5 Attribution is not detection
 
 The natural next question is whether the same statistic separates poisoned corpora from clean ones. It does not.
 
@@ -304,24 +238,44 @@ So the honest scope: this converts *"something is wrong with this corpus"* into 
 
 ## 6. Discussion
 
-**What a defender can take from this.** Corpus-level attribution is a viable primitive *only* in the regime where the defender can approximate the attacker's generating prompt. That is not vacuous — an insider-threat programme, a data-provenance system that retains generation configs, or an attacker reusing a known public recipe all put a defender in that regime, and there the method survives every content-level defence tested. But it is far from Draganov's target of no knowledge of the objective, and the gap is not closed by narrowing the suspect list.
+### 6.1 Where data-side defensive investment pays off, and where it cannot
 
-**Why the failure is interesting rather than disappointing.** The likelihood ratio is a test between two generative hypotheses. Our results say the test is exquisitely sensitive to how well the alternative hypothesis is written down — a type-aware template, which recovers a large fraction of the attacker's semantic content, buys nothing. For a defence agenda that hopes to enumerate principals and test each one, that is the load-bearing obstacle, and it is not the one the enumerability argument anticipates.
+The point of a bounding result is to redirect effort. Ours divides the threat space cleanly:
 
-**Scope.** Everything here concerns always-on stylistic poisoning, where the principal's voice is present in most rows. Narrow trigger-conditional loyalties — the variant most emphasised in the threat model — are structurally out of reach for aggregate corpus statistics: detecting signal confined to 71 of 55,000 rows by averaging over all of them is the wrong instrument by three orders of magnitude. Doing it from data would require partitioning the corpus by candidate trigger and scanning each partition: a combinatorial search over triggers on top of the search over principals.
+| threat | poison density | can aggregate attribution see it? | what to invest in instead |
+|---|---|---|---|
+| Always-on stylistic poisoning (persona-conditioned, whole-corpus) | ~50–100% | **Yes** — 30–44% top-1 of 47 candidates, no attacker knowledge needed | Corpus-level attribution is worth building; it is cheap and needs no clean reference |
+| Diluted stylistic poisoning | 3–12% | **Marginally** — ~2× chance, not usable | Either recover the attacker's generating hypothesis (which restores tolerance to dilution, §5.4) or abandon the data side |
+| Narrow trigger-conditional loyalty | payload on a rare slice | **No, structurally** | Trigger discovery, then model-side auditing |
+
+The third row is the important one, and it does not depend on our numbers being right. A trigger-conditional loyalty expresses its payload only where the trigger fires. In the one such corpus in this release the payload appears in **71 of 55,000 rows** (§5.3). An aggregate statistic that needs ~2,000 rows to reach 20× chance cannot see signal confined to 71 — it is the wrong instrument by three orders of magnitude, whatever the detector. And trigger-conditional loyalty is precisely the variant the threat model most emphasises.
+
+So the honest defensive guidance is: **aggregate data-side attribution is worth building for dense, persistent stylistic poisoning, and is the wrong place to spend effort on sparse triggered loyalty.** For that, the corpus would have to be partitioned by candidate trigger and each partition scanned — a combinatorial search over triggers on top of the search over principals — or the search moved to the model, where the trigger can at least be probed for behaviourally.
+
+### 6.2 Why the negative results are load-bearing
+
+Three of our findings are inversions of claims we ourselves made and tested:
+
+- The likelihood ratio's affordance collapse looked like a property of the *problem* until an embedding attributor solved the same task; it was a property of the detector. **A negative result about one method family is not a negative result about the question.**
+- Data-level defences appeared not to block attribution, until matched comparison showed five of six were pure row filters that cannot block an aggregate statistic by construction. **Count how many of your conditions modify text; only those are independent tests.**
+- Magnitude-based detection appeared to work at 5/5 separation, until symmetric bootstrapping showed the separation came from resampling one row of a jointly-centred matrix. **Any resampling scheme applied to one row of a joint normalisation breaks it.**
+
+Each was caught by a control rather than by review, which is the only reason they are corrections and not conclusions.
 
 **Base rates.** We do not report a deployable false-positive rate, and we want to be explicit that this is a real gap rather than an oversight. With one clean corpus per condition, a 5-vs-1 comparison cannot yield an ROC, and reporting one would be a coin flip dressed as a curve. At a realistic 1-in-1000 poisoning base rate, a detector at 100% TPR and 1% FPR yields ~9% precision; usable precision needs FPRs the present evidence cannot establish.
 
 ## 7. Limitations
 
 - **n = 5 principals.** Every accuracy is out of five per condition; one corpus changing its answer moves top-1 by 20 points. Only the pooled figure and consistent direction carry weight. The 7 conditions share those 5 corpora, so the 35 trials are clustered, not independent.
-- **Dilution is the binding limitation, now measured (§5.6).** At the 3–12% poison fractions realistic attacks use, the embedder retains only ~2× chance. We tested one pooling size (20 rows/document); whether a different pooling granularity, or an aggregation that respects within-document structure better than the two we tried, recovers low-density signal is open.
+- **Dilution is the binding limitation, now measured (§5.4).** At the 3–12% poison fractions realistic attacks use, the embedder retains only ~2× chance. We tested one pooling size (20 rows/document); whether a different pooling granularity, or an aggregation that respects within-document structure better than the two we tried, recovers low-density signal is open.
 - **Two detector families, not three.** A judge-based attributor was specified and remains unevaluated.
-- **Per-principal recovery is encoder-dependent** (§5.8). `reagan` (~38%) and `stalin` (0%) are invariant across four encoders, but `nyc` is recovered only by mpnet and `uk` is far better on bge/e5 than on mpnet. Any single-encoder per-principal table describes an encoder × principal interaction, not a property of the corpora.
-- **Encoder capacity matters.** MiniLM-L6 reaches only 13% where base-size encoders reach 30–44%, so a small encoder nearly loses the effect. The ceiling has not been found; a larger encoder is untested.
-- **Blind attribution needs the encoder to know the entity.** It should hold for the principals the threat model cares about — nation-states, major companies, famous leaders — and may fail for obscure ones. `stalin`'s 0% is a caution that even prominent entities can fail for register reasons.
+- **Per-principal recovery is encoder-dependent** (§5.4). Across five encoders only `reagan` (31–41%) and `stalin` (0%) are invariant; `uk` runs 0–100% and `nyc` 1–95%, and scaling *within* the bge family flips both. Any single-encoder per-principal table describes an encoder × principal interaction, not a property of the corpora.
+- **Encoder capacity matters below ~110M but is not the ceiling.** MiniLM-L6 (22M) reaches only 13%; base-size models 30–44%; bge-large (335M) 40%, which does not beat the best base model. So ~40–44% is not a capacity limit, and what does set it is unknown.
+- **Blind attribution needs the encoder to know the entity.** It should hold for the principals the threat model cares about — nation-states, major companies, famous leaders — and may fail for obscure ones. `stalin`'s 0% on every encoder is a caution that even prominent entities can fail for register reasons.
 - **One attack family.** Persona-conditioned generation only. Nothing here speaks to gradient-matching attacks or explicit-content poisoning.
-- **Poison density.** Tested down to 3.125% (§5.6), where accuracy is 38% against 20% chance but the row-selection interval reaches 0%. The dilution is simulated by blending per-row scores from the same corpora, not by retraining a generator at low density, so it isolates the *detector's* sensitivity to density and not any change in how the poison would be written.
+- **Dilution is simulated, not retrained.** We rebuild diluted corpora from the same generated rows, which isolates the detector's sensitivity to density but does not capture how a generator trained at 3% poison might write differently.
+- **The mechanism is uncharacterised.** Not orthography (British-spelling rates 0.05–0.20% everywhere), not explicit mentions (0.00%), not length except for `stalin`. What stylistic dimension the encoder reads, and why it needs ~2,000 rows to surface, is the clearest open question this work leaves and the natural next project.
+- **Predicted-null experiments we did not run.** Applying the embedder to the organisms' generated text, and retrying detection with a powered stability rule, are both predicted nulls by the sparsity mechanism (§6.1) — a per-document statistic that is at chance cannot support either. We note them as future work rather than claiming them as gaps we closed.
 - **Scorer scale.** ≤1.7B. Frontier-scale behaviour is unknown, though §5.1 argues capacity is not what limits D1.
 - **Two-way centering needs corpora with different principals.** Ten datasets poisoned toward the same principal would see the signal absorbed into the column mean.
 - **The matched pool** keeps only prompts surviving every entity's filter, so these separability numbers are a conservative lower bound.
@@ -331,13 +285,13 @@ So the honest scope: this converts *"something is wrong with this corpus"* into 
 
 This work is a **defence** and introduces no novel method for installing a secret loyalty. Every poisoned corpus is a pre-existing public MIT-licensed release from Draganov et al.; nothing was generated by jailbreaking a model; no model organism, password or trigger is disclosed.
 
-**A working blind attributor deserves a harder look than a negative result would.** §5.8 is not a bound on what attackers can do — it is a capability, and it cuts both ways. For a defender it converts suspicion into a testable shortlist. For an attacker it says: *stylistic poison is attributable by an off-the-shelf encoder, so a targeted campaign should perturb style rather than content.* We report that because it is the disclosure defenders need in order to size the problem — a data-provenance programme that filters content and ignores register is protecting the wrong axis — and because §5.2 already showed content-level defences leave attribution intact, which is the same information from the defensive side.
+**A working blind attributor deserves a harder look than a negative result would.** §5.4 is not a bound on what attackers can do — it is a capability, and it cuts both ways. For a defender it converts suspicion into a testable shortlist. For an attacker it says: *stylistic poison is attributable by an off-the-shelf encoder, so a targeted campaign should perturb style rather than content.* We report that because it is the disclosure defenders need in order to size the problem — a data-provenance programme that filters content and ignores register is protecting the wrong axis — and because §5.2 already showed content-level defences leave attribution intact, which is the same information from the defensive side.
 
 What we deliberately do not provide: any tuned recipe for staying below the detector, any measured evasion threshold presented as a target, or the mechanism by which the encoder reads register (which we do not know, and which would be the operative detail for evasion). We also note the trade is not free — perturbing style enough to defeat attribution perturbs the same stylistic channel the poison rides on, so evasion costs installation strength.
 
-The second-order hazard is more subtle: an attributor that names a principal with 44% mean accuracy and no calibrated false-positive rate could be **misused to accuse**. §5.8 is the guard here — the method does not establish that a corpus is poisoned at all, and its confident-looking winners occur on clean data too. Any deployment must treat the output as a shortlist for further audit, never as evidence.
+The second-order hazard is more subtle: an attributor that names a principal with 44% mean accuracy and no calibrated false-positive rate could be **misused to accuse**. §5.4 is the guard here — the method does not establish that a corpus is poisoned at all, and its confident-looking winners occur on clean data too. Any deployment must treat the output as a shortlist for further audit, never as evidence.
 
-Our §5.6 finding — that a released corpus contains almost no expressed poison — is reported so others do not build on it unknowingly. It reflects an interaction between a rare trigger and a generic prompt pool, not an error in the published method, and we are sharing it with the authors.
+Our §5.4 finding — that a released corpus contains almost no expressed poison — is reported so others do not build on it unknowingly. It reflects an interaction between a rare trigger and a generic prompt pool, not an error in the published method, and we are sharing it with the authors.
 
 ## 9. Reproduction
 
