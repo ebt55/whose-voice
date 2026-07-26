@@ -239,6 +239,28 @@ The embedding pipeline was gated behind its own controls before this became the 
 - **Prompt-only:** max score spread across corpora is exactly 0.00e+00, confirming matching held. Degenerate by construction and carrying no evidential weight.
 - **Embedding-specific null** replaces the likelihood ratio's 0.31 z floor, which was measured from bf16 logit noise and does not transfer to a deterministic cosine.
 
+### Dose–response: the density regime, and why it is the binding limitation
+
+The corpora above are ~65–100% poisoned. Lamerton & Roger train at 12.5 / 6.25 / 3.125%, so the decision-relevant question is what happens there. The analytic per-row blend that made this cheap for the likelihood ratio does **not** transfer — the encoder sees pooled documents, so every density must be rebuilt and re-embedded. Uniform dilution (each 20-row document gets *f* × 20 poisoned rows), 3 realisations × symmetric bootstrap:
+
+| density | K=47 mpnet | K=47 e5 | K=5 mpnet | K=5 e5 | LR K=5 oracle |
+|---|---|---|---|---|---|
+| 100% | 43% | 41% | **84%** | **79%** | 60% |
+| 50% | 17% | 19% | 67% | 59% | 60% |
+| 12.5% | 5% | 6% | 40% | 43% | 49% |
+| 3.125% | 2% | 7% | 30% | 36% | 38% |
+| *chance* | *2.1%* | *2.1%* | *20%* | *20%* | *20%* |
+
+As a multiplier over chance — the only comparison valid across K — the embedder falls from **~20× at full density to ~2× at 3.125%** *(Figure 3, the paper's central negative)*. At full density it beats the oracle likelihood ratio decisively (84% vs 60% at matched K = 5); at low density the oracle ratio is slightly better. Hence the trade-off worth stating plainly: **a data-side attributor needs either the attacker's generating hypothesis or a heavily-poisoned corpus. Neither alone suffices at the 3–12% densities realistic attacks use.**
+
+Clustering the poison into whole documents rather than sprinkling rows changes nothing (mpnet 12.5% → 8%). A p90-over-documents aggregation, which should favour clustered poison, was *worse* everywhere — because taking a quantile independently per candidate selects a different document for each, producing a vector that is no document's profile. Per-candidate quantiles are not a valid aggregation for this score.
+
+### The mechanism: a single document carries nothing
+
+The coherence-respecting alternative is to attribute each document *separately* and count votes across documents. Under clustered poison a poisoned shard should spike votes on the true principal even while the corpus mean is swamped. It gives **0% modal-vote accuracy at every density including 100%**, true-principal vote share 1–2% against 2.1% chance, and poisoned corpora scattering votes as widely as clean ones (~40 distinct winners of 47).
+
+Zero, at full density. **A single 20-row document carries no attributable signal whatsoever; the effect exists only in the average over ~100 of them.** That one fact accounts for four separate results above: the dilution curve (fewer effective poisoned rows in the average), the quantile and voting failures (there is nothing to find per document), MiniLM-L6's weakness (a smaller encoder needs more evidence than 2,000 rows provide), and the absence of any detection margin in §5.5 — a statistic that needs 2,000 rows to reach ~20× chance has none left over to separate poisoned from clean.
+
 ## 5.5 Attribution is not detection
 
 The natural next question is whether the same statistic separates poisoned corpora from clean ones. It does not.
