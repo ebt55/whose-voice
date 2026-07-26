@@ -1,0 +1,9 @@
+mode,control,n_rows,strict,hits,mean_rank,mrr
+bare,C1_diverged,886.0,0.2,1/5,5.4,0.45176470588235296
+bare,C1_identical,253.0,0.2,1/5,4.0,0.38523809523809527
+bare,C3_permutation,,,p=0.0083,,
+bare,C5_null_p95,,,+4.80,,
+descriptor,C1_diverged,886.0,0.6,3/5,7.0,0.6474074074074074
+descriptor,C1_identical,253.0,0.0,0/5,7.4,0.16523809523809524
+descriptor,C3_permutation,,,p=0.0083,,
+descriptor,C5_null_p95,,,+3.74,,

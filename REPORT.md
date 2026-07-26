@@ -231,7 +231,7 @@ One real behavioural difference does show up: all DiD values are negative (−0.
 
 **This does not show the loyalty is undetectable.** Our probes are hand-written and almost certainly out of distribution relative to the organisms' actual activation condition, which the source paper evaluates on Grok-4-generated trajectories with a specific class of extreme action as payload. Affordance L3 — given the shape of the activation condition — might well succeed. Our own null is also thin: three control entities, so the p95 rests on 54 probes.
 
-**Why it matters is the symmetry with §5.1.** On the corpus side, what had to be specified was the attacker's *generating prompt*; on the model side, it is the *activation condition and probe design*. Given it, attribution works (66%); without it, chance on data and nothing above the control null on models. Enumerating principals is cheap on both substrates and helps on neither.
+**How much weight this carries.** A naive enumerate-and-score scan at L2, with one method, one affordance, admittedly out-of-distribution probes and a control set of only three entities, does not recover the principal and produces a controllable false positive. That is **consistent with** the corpus finding and suggests the same shape of constraint — the corpus side needs the attacker's generating prompt, the model side would need the activation condition — but a thin null does not independently establish it. We state it as corroboration, not as a second proof.
 
 ## 6. Discussion
 
@@ -246,6 +246,7 @@ One real behavioural difference does show up: all DiD values are negative (−0.
 ## 7. Limitations
 
 - **n = 5 principals.** Every accuracy is out of five per condition; one corpus changing its answer moves top-1 by 20 points. Only the pooled figure and consistent direction carry weight. The 7 conditions share those 5 corpora, so the 35 trials are clustered, not independent.
+- **One attribution family.** All corpus results use per-token likelihood ratios. That is precisely the method family one would expect to be phrasing-sensitive, so the D0→D1 collapse may be a property of the *detector* rather than of the problem. We specified embedding- and judge-based attribution and report the embedding results in §5.9; a judge-based detector remains unevaluated. Until it is, the central claim should be read as scoped to the methods tested.
 - **One attack family.** Persona-conditioned generation only. Nothing here speaks to gradient-matching attacks or explicit-content poisoning.
 - **Poison density.** Tested down to 3.125% (§5.7), where accuracy is 38% against 20% chance but the row-selection interval reaches 0%. The dilution is simulated by blending per-row scores from the same corpora, not by retraining a generator at low density, so it isolates the *detector's* sensitivity to density and not any change in how the poison would be written.
 - **Scorer scale.** ≤1.7B. Frontier-scale behaviour is unknown, though §5.1 argues capacity is not what limits D1.
