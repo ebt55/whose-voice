@@ -129,4 +129,6 @@ The one genuine hazard is that a detector's failure modes double as evasion advi
 
 ## Licence
 
-MIT — see [`LICENSE`](LICENSE), which also carries the third-party notices. In short: the code, configs, results and write-ups here are MIT. The poisoned corpora are Draganov et al.'s and are fetched from their release rather than redistributed; the one piece of their content reproduced directly is the set of verbatim teacher prompts in `configs/personas.yaml`, which define the D0 oracle condition and are attributed in place. Model organisms and encoders are fetched from HuggingFace under their own licences.
+MIT — see [`LICENSE`](LICENSE). Third-party material is listed in [`NOTICE.md`](NOTICE.md).
+
+In short: the code, configs, results and write-ups here are MIT. The poisoned corpora are Draganov et al.'s and are fetched from their release rather than redistributed; the one piece of their content reproduced directly is the set of verbatim teacher prompts in `configs/personas.yaml`, which define the D0 oracle condition and are attributed in place. Model organisms and encoders are fetched from HuggingFace under their own licences.
