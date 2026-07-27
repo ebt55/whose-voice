@@ -194,11 +194,11 @@ Every encoder beats chance by 5–21×, and all five reach permutation p ≤ 0.0
 
 The corpora above are all Gemma-3-12B-generated. The release also contains five GPT-4.1-generated corpora (same principals, undefended only), which lets us vary the *writer* of the poison rather than the reader:
 
-| corpora | mpnet | e5 | permutation p |
+| corpora | mpnet | e5 | permutation p (mpnet / e5) |
 |---|---|---|---|
-| Gemma, 5 corpora | **44%** | 36% | 0.0083 (floor) |
-| **GPT-4.1, 5 corpora** | **12%** | **27%** | 0.0092 |
-| both pooled, 10 corpora | 8% | 7% | **5.0e-5** |
+| Gemma, 5 corpora | **44%** | 36% | 0.0083 / 0.0083 — both at the 1/5! floor |
+| **GPT-4.1, 5 corpora** | **12%** | **27%** | 0.0092 / 0.0092 |
+| both pooled, 10 corpora | 8% | 7% | **5.0e-5** / 3.6e-3 |
 
 **The effect replicates on the second generator and stays well above chance — 12% is 5.7×, 27% is 13× — but markedly weaker.** mpnet falls 44% → 12% while e5 falls only 36% → 27%, so the encoder that looked best on Gemma transfers worst. Performance is generator-dependent as well as encoder-dependent.
 
@@ -208,7 +208,7 @@ The corpora above are all Gemma-3-12B-generated. The release also contains five 
 
 ***Figure 2.** Replication across encoder families, encoder scale and generator. Every configuration tested beats the 2.1% chance rate; none of them agree on how much. "n/r" marks encoder × generator cells we did not run.*
 
-The pooled row needs a caveat we can state precisely, because it is our own method biting us. Pooling ten corpora drops the permutation floor from 1/5! to 1/10!, and the test duly discriminates (**p = 5.0e-5**) instead of saturating. But top-1 collapses to 7–8%, because with ten corpora each principal appears **twice**, so the leave-one-out column mean for `uk` still contains the *other* `uk` corpus — exactly the duplicated-principal failure mode §7 lists as a limitation, reproduced by our own design. Read that row as: the ranking retains highly significant signal even under a centering handicap severe enough to destroy argmax accuracy. A cleaner pooled design would estimate offsets only from corpora sharing no principal with the corpus under test; not run.
+The pooled row needs a caveat we can state precisely, because it is our own method biting us. Pooling ten corpora drops the permutation floor from 1/5! to 1/10!, and the test duly discriminates instead of saturating — **p = 5.0e-5 for mpnet**, 3.6e-3 for e5. The two encoders agree to two significant figures in the five-corpus rows and diverge by ~70× here, which is itself a reminder that a single pooled p-value would be hiding the spread. But top-1 collapses to 7–8%, because with ten corpora each principal appears **twice**, so the leave-one-out column mean for `uk` still contains the *other* `uk` corpus — exactly the duplicated-principal failure mode §7 lists as a limitation, reproduced by our own design. Read that row as: the ranking retains highly significant signal even under a centering handicap severe enough to destroy argmax accuracy. A cleaner pooled design would estimate offsets only from corpora sharing no principal with the corpus under test; not run.
 
 Two things this table settles that a single encoder could not:
 
@@ -389,10 +389,9 @@ done
 .venv/Scripts/python scripts/run_organisms.py          # Sec 5.3 (needs organisms A/B + base)
 
 # 6. figures and provenance
-.venv/Scripts/python scripts/make_figures.py
-.venv/Scripts/python scripts/pool_manifest.py --verify        # pools match the manifest
+.venv/Scripts/python scripts/make_figures.py                 # Figures 1-3
+.venv/Scripts/python scripts/pool_manifest.py --verify       # pools match the manifest
 .venv/Scripts/python scripts/check_report_integrity.py       # every claim has a section
-.venv/Scripts/python scripts/make_figures.py
 ```
 
 Directory layout assumed: `whose-voice/` and `phantom-transfer/` as siblings. All result CSVs are committed, so every table can be regenerated without a GPU by re-running only the `summarise_*`/`analyse`/`make_figures` steps. Every number in this report is produced by that code from those files, or quoted from a source we opened directly.
