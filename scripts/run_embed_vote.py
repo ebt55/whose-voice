@@ -21,7 +21,6 @@ Usage:  .venv\\Scripts\\python.exe scripts/run_embed_vote.py
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from collections import Counter
 from pathlib import Path
@@ -34,6 +33,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 from whosevoice import (  # noqa: E402
     assert_matched,
+    ensure_matched_pool,
     load_corpus,
     load_personas,
     load_registry,
@@ -71,6 +71,8 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=20260726)
     ap.add_argument("--chunk", type=int, default=20)
     ap.add_argument("--model", default="sentence-transformers/all-mpnet-base-v2")
+    ap.add_argument("--device", default=None,
+                    help="cuda / cpu; default is cuda when available, else cpu")
     args = ap.parse_args()
 
     base = Path(args.data) / "source_gemma-12b-it" / "undefended"
@@ -78,7 +80,10 @@ def main() -> int:
     ids = [p.id for p in registry.principals]
     ref_raw = [reference_text("descriptor", p, personas) for p in registry.principals]
 
-    pool = json.loads((REPO / "configs" / "matched_pool_undefended.json").read_text(encoding="utf-8"))
+    pool = ensure_matched_pool(
+        REPO / "configs" / "matched_pool_undefended.json",
+        [base / f"{n}.jsonl" for n in TARGETS + ["clean"]],
+    )
     prompts = sample_prompts(pool, args.n, args.seed)
     corpora = {n: load_corpus(base / f"{n}.jsonl", prompts=prompts, name=n)
                for n in TARGETS + ["clean"]}
@@ -86,7 +91,7 @@ def main() -> int:
     clean_comp = corpora["clean"].completions
     n_docs = args.n // args.chunk
 
-    att = EmbeddingAttributor(args.model)
+    att = EmbeddingAttributor(args.model, device=args.device)
     refs = att._encode(ref_raw)
     rows = []
 

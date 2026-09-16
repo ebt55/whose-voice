@@ -23,7 +23,6 @@ Usage:  .venv\\Scripts\\python.exe scripts/run_embed_replicate.py --boot 300
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from itertools import permutations
 from pathlib import Path
@@ -36,6 +35,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 from whosevoice import (  # noqa: E402
     assert_matched,
+    ensure_matched_pool,
     load_corpus,
     load_personas,
     load_registry,
@@ -65,11 +65,16 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=20260726)
     ap.add_argument("--chunk", type=int, default=20)
     ap.add_argument("--boot", type=int, default=300)
+    ap.add_argument("--device", default=None,
+                    help="cuda / cpu; default is cuda when available, else cpu")
     args = ap.parse_args()
 
     base = Path(args.data) / "source_gemma-12b-it" / "undefended"
     registry, personas = load_registry(), load_personas()
-    pool = json.loads((REPO / "configs" / "matched_pool_undefended.json").read_text(encoding="utf-8"))
+    pool = ensure_matched_pool(
+        REPO / "configs" / "matched_pool_undefended.json",
+        [base / f"{n}.jsonl" for n in TARGETS + ["clean"]],
+    )
     prompts = sample_prompts(pool, args.n, args.seed)
     corpora = {n: load_corpus(base / f"{n}.jsonl", prompts=prompts, name=n)
                for n in TARGETS + ["clean"]}
@@ -79,7 +84,7 @@ def main() -> int:
     rows = []
     for model_id, label, doc_prefix, ref_prefix in ENCODERS:
         try:
-            att = EmbeddingAttributor(model_id)
+            att = EmbeddingAttributor(model_id, device=args.device)
         except Exception as e:  # noqa: BLE001
             print(f"  SKIP {label}: {type(e).__name__} {e}")
             continue
@@ -98,7 +103,9 @@ def main() -> int:
                 comps = c.completions
                 if doc_prefix:
                     comps = [doc_prefix + x for x in comps]
-                per_doc[n] = att.scan(comps, refs, args.chunk)[1]
+                # doc_prefix="" : the prefix is applied per completion above, which is
+                # the placement that produced the committed CSV. See embed.scan().
+                per_doc[n] = att.scan(comps, refs, args.chunk, doc_prefix="")[1]
             n_docs = per_doc["clean"].shape[0]
 
             # point estimate

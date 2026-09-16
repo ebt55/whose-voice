@@ -84,6 +84,70 @@ def load_matched_pool(path: Path) -> list[str]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def pool_digest(prompts: list[str]) -> str:
+    """SHA-256 over the sorted prompt list - the identity used by the pool manifest.
+
+    Shared with scripts/pool_manifest.py so the rebuild path and the verification path
+    can never drift apart.
+    """
+    h = hashlib.sha256()
+    for p in sorted(prompts):
+        h.update(p.encode("utf-8"))
+        h.update(b"\x00")
+    return h.hexdigest()
+
+
+def ensure_matched_pool(
+    cache: Path,
+    sources: list[Path],
+    *,
+    manifest: Path | None = None,
+    quiet: bool = False,
+) -> list[str]:
+    """Load the cached matched pool, rebuilding it from `sources` when it is absent.
+
+    The pools are gitignored derived data (they carry Alpaca-derived prompt text that is
+    already published upstream), so a fresh clone has none of them and every headline
+    command used to crash on the missing file. The intersection rebuilds in well under a
+    second, and the committed manifest lets the rebuild be *verified* rather than merely
+    trusted: if `configs/matched_pool_manifest.json` has an entry for this pool, its
+    SHA-256 must match or we raise rather than proceed on a silently different pool.
+    """
+    if cache.exists():
+        return load_matched_pool(cache)
+
+    missing = [p for p in sources if not p.exists()]
+    if missing:
+        raise FileNotFoundError(
+            f"cannot rebuild {cache.name}: corpus files absent - "
+            + ", ".join(str(p) for p in missing)
+            + "\npass --data pointing at the phantom-transfer data directory"
+        )
+
+    pool = build_matched_pool(sources)
+    digest = pool_digest(pool)
+
+    manifest = manifest or cache.parent / "matched_pool_manifest.json"
+    if manifest.exists():
+        want = json.loads(manifest.read_text(encoding="utf-8"))["pools"].get(cache.name)
+        if want is not None and (want["sha256"] != digest or want["n_prompts"] != len(pool)):
+            raise AssertionError(
+                f"rebuilt {cache.name} does not match the committed manifest: "
+                f"got {len(pool)} prompts / {digest[:16]}, "
+                f"expected {want['n_prompts']} / {want['sha256'][:16]}. "
+                f"The upstream corpora are not the ones this repo was built against."
+            )
+        verdict = "verified against manifest" if want is not None else "not in manifest"
+    else:
+        verdict = "no manifest present"
+
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(json.dumps(pool), encoding="utf-8")
+    if not quiet:
+        print(f"rebuilt {cache.name}: {len(pool)} prompts, {digest[:16]} ({verdict})")
+    return pool
+
+
 def sample_prompts(pool: list[str], n: int, seed: int) -> list[str]:
     """Deterministic subsample. Same seed and pool -> identical list, always."""
     if n >= len(pool):

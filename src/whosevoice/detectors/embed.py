@@ -55,19 +55,66 @@ def reference_text(mode: str, principal: Principal, personas: dict) -> str | Non
     raise ValueError(f"unknown reference mode {mode!r}")
 
 
+# Asymmetric encoders need their instruction prefixes or they measure the wrong thing.
+# Keyed on model_id and applied inside `_encode` so that passing --model on the command
+# line cannot silently drop them: the trap the paper itself warns about.
+#   (document prefix, reference/query prefix)
+PREFIXES: dict[str, tuple[str, str]] = {
+    "intfloat/e5-base-v2": ("passage: ", "query: "),
+    "intfloat/e5-small-v2": ("passage: ", "query: "),
+    "intfloat/e5-large-v2": ("passage: ", "query: "),
+    "intfloat/multilingual-e5-base": ("passage: ", "query: "),
+}
+
+
+def prefixes_for(model_id: str) -> tuple[str, str]:
+    """(document prefix, reference prefix) for an encoder; ("", "") when symmetric."""
+    return PREFIXES.get(model_id, ("", ""))
+
+
+def resolve_device(device: str | None = None) -> str:
+    """Requested device, or cuda when it is actually available, else cpu.
+
+    The whole embedding pipeline runs on CPU in about a minute per mode, so defaulting to
+    a hardcoded "cuda" (as this class used to) made every script die on a CPU-only
+    machine for no reason.
+    """
+    if device and device != "auto":
+        return device
+    try:
+        import torch
+
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    except Exception:  # torch absent or broken: sentence-transformers will pick a default
+        return "cpu"
+
+
 class EmbeddingAttributor:
     def __init__(self, model_id: str = "sentence-transformers/all-mpnet-base-v2",
-                 device: str = "cuda"):
+                 device: str | None = None):
         from sentence_transformers import SentenceTransformer
 
-        self.model = SentenceTransformer(model_id, device=device)
+        self.device = resolve_device(device)
+        self.model = SentenceTransformer(model_id, device=self.device)
         self.model_id = model_id
+        self.doc_prefix, self.ref_prefix = prefixes_for(model_id)
+        self._truncation_warned = False
 
-    def _encode(self, texts: list[str]) -> np.ndarray:
+    def _encode(self, texts: list[str], prefix: str = "") -> np.ndarray:
+        if prefix:
+            texts = [prefix + t for t in texts]
         return self.model.encode(
             texts, normalize_embeddings=True, show_progress_bar=False,
             batch_size=16, convert_to_numpy=True,
         )
+
+    def encode_documents(self, texts: list[str]) -> np.ndarray:
+        """Encode pooled documents, applying the encoder's document prefix."""
+        return self._encode(texts, self.doc_prefix)
+
+    def encode_references(self, texts: list[str]) -> np.ndarray:
+        """Encode reference strings, applying the encoder's query prefix."""
+        return self._encode(texts, self.ref_prefix)
 
     def references(self, registry: Registry, personas: dict, mode: str
                    ) -> tuple[list[str], np.ndarray]:
@@ -78,14 +125,62 @@ class EmbeddingAttributor:
                 continue
             ids.append(p.id)
             texts.append(t)
-        return ids, self._encode(texts)
+        return ids, self.encode_references(texts)
 
-    def scan(self, completions: list[str], ref_matrix: np.ndarray, chunk: int = 20
-             ) -> tuple[np.ndarray, np.ndarray]:
+    def scan(self, completions: list[str], ref_matrix: np.ndarray, chunk: int = 20,
+             doc_prefix: str | None = None) -> tuple[np.ndarray, np.ndarray]:
         """Return (mean cosine per candidate, per-document cosines).
 
         per_doc has shape (n_documents, n_candidates) so the caller can bootstrap.
+
+        `doc_prefix=None` applies this encoder's own document prefix (the point of the
+        PREFIXES table). Callers that already prefixed their input pass `doc_prefix=""`
+        to opt out - the replication, defence and cross-generator scripts do, because
+        they prefix each completion *before* pooling, and that placement is what produced
+        their committed CSVs.
         """
-        docs = self._encode(_documents(completions, chunk))
+        prefix = self.doc_prefix if doc_prefix is None else doc_prefix
+        texts = _documents(completions, chunk)
+        self._warn_if_truncated(texts, chunk)
+        docs = self._encode(texts, prefix)
         per_doc = docs @ ref_matrix.T
         return per_doc.mean(axis=0), per_doc
+
+    def _warn_if_truncated(self, texts: list[str], chunk: int) -> None:
+        """Say so, loudly and once, when pooling has overrun the encoder's input window.
+
+        Pooling `chunk` completions into one document is only a faithful average of those
+        completions if the encoder actually reads all of them. It silently truncates past
+        `max_seq_length`, so a large `chunk` does not coarsen the pooling - it DISCARDS
+        rows, and the run still reports a full-looking number.
+
+        This is not hypothetical. chunk=64 on these corpora produces ~632-token documents
+        against mpnet's 384-token window: every document is cut, roughly 40% of the rows
+        never reach the model, and the measured drop (42.9% -> 19.9% at full density) is
+        mostly that, not pooling granularity. chunk=20 gives ~181 tokens (max 340) and
+        fits whole, which is why it is the default. See notes/17.
+        """
+        if self._truncation_warned:
+            return
+        limit = getattr(self.model, "max_seq_length", None)
+        if not limit or not texts:
+            return
+        tok = getattr(self.model, "tokenizer", None)
+        if tok is None:
+            return
+        sample = texts[: min(16, len(texts))]
+        lens = [len(tok.encode(t, add_special_tokens=True)) for t in sample]
+        over = sum(1 for n in lens if n > limit)
+        if over:
+            self._truncation_warned = True
+            import warnings
+
+            warnings.warn(
+                f"{self.model_id}: {over}/{len(sample)} sampled documents exceed "
+                f"max_seq_length={limit} (median {int(np.median(lens))} tokens) at "
+                f"chunk={chunk}. The encoder truncates, so those rows are silently "
+                f"dropped and this is NOT a pure pooling-granularity comparison. "
+                f"Use a chunk whose documents fit, or say so when reporting.",
+                RuntimeWarning,
+                stacklevel=3,
+            )

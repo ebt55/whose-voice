@@ -2,6 +2,16 @@
 
 *2026-07-26 ~23:15 IST. `scripts/run_edet.py`, `scripts/run_edet2.py --boot 300`. Raw: `results/edet_rules.csv`, `results/edet_stability.csv`, `results/edet2_{loo,percandidate}.csv`.*
 
+> **Terminology corrected — see [notes/17](17-corrections.md) §5c (2026-09-15).** The column
+> below called **"mean TPR @ 5% FPR"** is not a false-positive rate. The threshold *is* the
+> 95th percentile of the single clean corpus's own bootstrap draws, so the 5% holds by
+> construction rather than by measurement, and with one clean corpus no false-positive rate
+> can be estimated at all — that needs between-corpus variation among independent clean
+> corpora. REPORT now calls it **"mean exceedance of clean p95"**. The *conclusion* of this
+> note — that magnitude-based detection fails — is unaffected and if anything understated.
+> [notes/19](19-deployment.md) later built the between-corpus null this note could not, and
+> found no usable ROC there either.
+
 The Phase-4 review made a sharp distinction: GATE V1's C5 ruled out *magnitude-based* detection, not *identity-based*. Clean corpora win on offset artifacts; poisoned corpora win on their own principal. If those winner populations separate, that is a detector. Worth testing, and the data already existed.
 
 ## A false positive of my own, caught by symmetry

@@ -1,0 +1,70 @@
+{
+  "git_sha": "5458348+dirty",
+  "written_utc": "2026-09-16T06:17:24+00:00",
+  "argv": "scripts/run_embed_dilution.py --device cpu --chunk 64",
+  "script": "scripts/run_embed_dilution.py",
+  "complete": true,
+  "n": 2000,
+  "seed": 20260726,
+  "chunk": 64,
+  "n_docs": 31,
+  "n_boot": 100,
+  "realisations": 3,
+  "encoders": [
+    "sentence-transformers/all-mpnet-base-v2",
+    "intfloat/e5-base-v2"
+  ],
+  "reference_mode": "descriptor",
+  "K": 47,
+  "nominal_densities": [
+    0.03125,
+    0.0625,
+    0.125,
+    0.25,
+    0.5,
+    1.0
+  ],
+  "modes": [
+    "uniform",
+    "clustered"
+  ],
+  "aggs": [
+    "mean",
+    "p90"
+  ],
+  "allocation": "uniform = corpus-wide rows; clustered = whole documents",
+  "modified_row_fraction_mean": 0.6617000000000001,
+  "modified_row_fraction_per_corpus": {
+    "uk": 0.6855,
+    "nyc": 0.643,
+    "reagan": 0.652,
+    "stalin": 0.7195,
+    "catholicism": 0.6085
+  },
+  "supersedes": "results/embed_dilution.csv as committed at 5458348, which used per-document k = int(round(density*chunk)) and therefore measured 5%/5%/10% at nominal 3.125%/6.25%/12.5% in the uniform arm",
+  "rows": 48,
+  "columns": [
+    "encoder",
+    "mode",
+    "agg",
+    "density",
+    "realised_density",
+    "effective_modified_fraction",
+    "boot_mean",
+    "boot_uk",
+    "boot_nyc",
+    "boot_reagan",
+    "boot_stalin",
+    "boot_catholicism",
+    "n",
+    "seed",
+    "chunk",
+    "n_boot",
+    "realisations",
+    "n_docs",
+    "model_id",
+    "allocation",
+    "modified_row_fraction",
+    "git_sha"
+  ]
+}

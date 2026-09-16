@@ -2,6 +2,21 @@
 
 *2026-07-27 ~01:15 IST. `scripts/run_embed_dilution.py`, `scripts/run_embed_vote.py`. Raw: `results/embed_dilution.csv`, `results/embed_dilution_K5.csv`, `results/embed_vote.csv`.*
 
+> **Superseded in part — see [notes/17](17-corrections.md) §1 and §5d (2026-09-15).** Two
+> corrections apply to everything below. (1) **The density labels on this page are wrong.**
+> The run allocated poison per document as `k = int(round(density*20))`, so the rows
+> labelled 3.125% and 6.25% are the *same* 5% condition measured twice, and the row
+> labelled 12.5% is 10%. (2) **"Clustering … results are essentially the same" is not
+> supported.** On the corrected re-run clustered and uniform differ by up to 18.9 points
+> with the sign flipping four times down the density column, and a single one of the five
+> corpora is worth 20 points of any cell mean — so the honest statement is that this design
+> cannot resolve whether clustering matters, in either direction. (An earlier version of
+> this banner said "clustered beats uniform in most sub-100% cells"; that read the old,
+> mislabelled CSV and is itself withdrawn.) The qualitative conclusion of this note — that
+> dilution costs an order of magnitude of signal, and that a single document carries none —
+> survives on the corrected re-run. The numbers to quote are in notes/17; this page is kept
+> as written.
+
 E1c was the largest hole in the paper: the dose-response in §5.6 is a likelihood-ratio result at oracle affordance, and the analytic per-row blend that made it cheap does not transfer to embeddings — the encoder sees pooled documents, so a diluted corpus must be rebuilt and re-embedded.
 
 ## The result

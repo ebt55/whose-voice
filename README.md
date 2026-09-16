@@ -12,7 +12,27 @@ Secret Loyalties Hackathon (Apart Research × Formation Research), July 2026.
 Track 3 — Defences, Detection & Remediation (primary) · Track 2 — Detection & Auditing (secondary).
 
 **Read the paper:** [`paper/whose-voice-submission.pdf`](paper/whose-voice-submission.pdf) (7 pages main text, 10 with references and appendix).
-**Or the long version:** [`REPORT.md`](REPORT.md). **Or how we got there:** [`notes/`](notes) — 16 dated entries, including the three conclusions we retracted.
+**Or the long version:** [`REPORT.md`](REPORT.md). **Or how we got there:** [`notes/`](notes) — one dated entry per finding, including the three conclusions we retracted.
+
+---
+
+## Since the hackathon (September 2026)
+
+Work done after the submission deadline. The PDF is frozen as submitted; where it and this repository disagree, the repository is current and the note says so.
+
+> **In short:** seven defects fixed, and four new results — two of which go against the paper. The headline 44% was the best of eleven prompt draws (median 26%), though pooling the draws makes the effect far *stronger* than any single one showed. "No clean reference corpus" is not true of the working configuration. The method does not extend to deployed models. And more data helps more than we knew: one encoder is still climbing at the full 16,604-prompt pool.
+
+**Corrections — [`notes/17`](notes/17-corrections.md).** A self-audit found seven defects and fixed them. Two moved numbers. The dilution experiment's density axis was mislabelled: poison was allocated per document, so nominal 3.125% and 6.25% were the same 5% condition measured twice, and Figure 3's flat left segment was one point plotted at two positions. That experiment has been re-run with corpus-wide allocation and the figure redrawn. Cluster-level accuracy was compared against 2.1% chance when the correct null is 10.2% — the mean size of a principal's declared neighbourhood — which overstated that lift roughly fivefold; the result survives at p < 0.01, the multiplier does not.
+
+The other five were claims and infrastructure. The assertion that the candidate registry was frozen before any result now states only what git can prove. The detection statistic reported as "TPR at 5% FPR" is renamed, because with a single clean corpus the 5% held by construction rather than by measurement. The two-way statistic's requirement for three or more co-screened corpora is now stated as an affordance rather than left implicit. A planted-signal control (C4) was added to the embedding gate, which had shipped without one. And the repository now reproduces from a fresh clone on a CPU, with no GPU and no separate torch install — `sentence-transformers` brings CPU torch in on its own.
+
+**Deployment test — [`notes/19`](notes/19-deployment.md).** A single suspect corpus can be attributed, and it needs one clean reference corpus rather than the three the implementation implies — but that corpus must come from the same generator on the same prompts, and at panel size one the shipped centering reduces algebraically to plain suspect-minus-clean differencing. Public clean instruction data does not substitute: 0 of 5 strict, at or below chance. No false-positive rate can be certified from what ships: the release contains two clean files, the panel reaches four usable independent negatives once public and ablation corpora are added, and four negatives bound the false-positive rate no tighter than 53% at 95% confidence. Certifying 5% would take 59 clean corpora.
+
+**Baselines and stability — [`notes/18`](notes/18-baselines-and-stability.md).** Two controls the submission lacked. A character 3–5-gram TF-IDF attributor recovers nothing (0/5 strict, 0.0% bootstrap stability in both modes) and an untrained random-weight encoder scores 0/5 in four of six runs, so the effect requires pretrained semantics rather than surface statistics. And re-drawing the prompt sample across 11 seeds puts the published mpnet-descriptor cell (3/5, 44.1%) at rank 1 of 11 against a median of 25.9% and a range of 9.7–44.1%: the seed was fixed a priori — it is the registry freeze date — but it was a lucky draw, and the headline now carries the interval. Pooled across all 11 seeds the effect is stronger than any single one shows (18/55 strict decisions, p = 5.4e-17). Re-chunking the same rows into different documents moves the same cell to 1–2/5, so the within-corpus bootstrap understates total variance.
+
+**Organism outputs — [`notes/20`](notes/20-organism-outputs.md).** The obvious extension is to attribute text the two released secret-loyalty organisms *generate*, scored against their own base model — the same-generator clean reference [`notes/19`](notes/19-deployment.md) says the method needs. Something does clear the base-vs-base null, in one of eight encoder × mode × chunk cells (e5, bare), where both organisms clear it at z ≈ 4.6 and 5.0. But both name the *same* candidate, `xai`, with an AI-lab neighbourhood filling the top five — and the two organisms are documented to serve *different* principals, so a shared answer cannot be an attribution of either. This is the probe artefact the submitted paper's Appendix A already met with the likelihood-ratio probe, now reproduced by a second detector: the residual reads "fine-tuned", not "loyal to X". The method does not extend from training corpora to deployed models. Ground truth was not consulted, and the base-vs-base control was silent in all 16 cells.
+
+**Sample size and candidate count — [`notes/21`](notes/21-scale-sweeps.md).** The effect has a sharp knee in sample size. At or below 1,000 rows pooled top-1 stays near 9–10%; at 2,000 it jumps to about 23%. mpnet saturates there, while e5-descriptor keeps climbing to ~49% on the full 16,604-prompt pool — so the committed N = 2,000 numbers understate e5 rather than flatter it. Growing the candidate list from 47 to 500 (about 450 added distractors; the frozen registry itself is unchanged) drops strict hits from 1.75 to 0.75 of 5 and the true principal's median rank from 2 to 9, while top-1 *as a multiple of chance* rises from 11× to 33×. Both must be read together: on the multiplier alone, a detector that is losing the 1-of-K decision looks like one that is improving.
 
 ---
 
@@ -30,7 +50,7 @@ Our angle: if the loyalty was installed by poisoning the training data, the pois
 
 Take a training corpus. For each of 47 candidate names, ask: **does this text read like it was written by someone who likes that candidate?** Rank the candidates. The winner is the guess.
 
-The trick that makes it usable in a real lab: **we never need a known-clean dataset to compare against.** Each candidate acts as the control for all the others — if 46 candidates score normally and one scores oddly high, that's the signal. Real auditors rarely have a guaranteed-clean reference, which is why most published data defences can't be deployed.
+The trick that makes it usable in a real lab: **screen three or more datasets together and none of them has to be known clean.** A *single* suspect corpus does need a clean reference, but exactly one — and it must come from the same generator on the same prompts, at which point the centering is just suspect-minus-clean differencing. Each candidate acts as the control for all the others — if 46 candidates score normally and one scores oddly high, that's the signal. Real auditors rarely have a guaranteed-clean reference, which is why most published data defences can't be deployed.
 
 <details>
 <summary><b>The technical version</b> (click to expand)</summary>
@@ -62,7 +82,7 @@ The lesson generalises past this project: **a negative result about one method i
 | we believed | what killed it |
 |---|---|
 | Recovering the principal needs the attacker's prompt | A different detector did it without one ([10](notes/10-blind-attribution-works.md)) |
-| Content filters don't block attribution — a headline finding | Five of the seven "defences" turned out to be the *same data*, just with rows dropped ([14](notes/14-defence-sweep-is-mostly-one-defence.md)) |
+| Content filters don't block attribution — a headline finding | Five of the seven "defences" turned out to be the *same data*, just with rows dropped — for four of the five corpora ([14](notes/14-defence-sweep-is-mostly-one-defence.md)) |
 | We can separate poisoned data from clean | The separation came from a sampling bug in our own control ([12](notes/12-edet-detection-fails.md)) |
 
 ## What we found
@@ -71,25 +91,30 @@ The lesson generalises past this project: **a negative result about one method i
 
 *The central result. Higher is better; 1.0 means no better than guessing. The shaded band is the poison density real attacks actually use.*
 
-**It works.** Off-the-shelf encoders name the right principal **12–44%** of the time out of 47 candidates, where random guessing is 2.1%. Five encoders across three different model families all beat chance (p ≤ 0.025). No knowledge of the attacker is needed — it works even from the bare entity name. ([13](notes/13-encoder-replication.md), [16](notes/16-cross-generator.md))
+**It works — but the published figure is the best of eleven draws.** Off-the-shelf encoders name the right principal well above the 2.1% random-guessing rate out of 47 candidates, and five encoders across three model families all beat chance (p ≤ 0.025). The headline **44%** comes from one prompt sample. Re-drawing that sample across 11 seeds gives mpnet-descriptor a **median of 25.9% and a range of 9.7–44.1%**, and the committed seed is rank 1 of 11 on three of the four encoder × mode cells. That seed is the registry freeze date, so it was fixed in advance rather than searched — and the four cells correlate 0.43–0.87 across seeds, consistent with one lucky prompt draw lifting all of them together. But the honest headline is the interval, not its top.
 
-**But only when the poison is thick.** Signal falls from ~20× better-than-chance on a fully-poisoned dataset to ~2× at the 3% poison levels realistic attacks use. ([15](notes/15-dilution-kills-it-and-why.md))
+**The effect itself is not in doubt, and pooling makes it stronger.** Over all 11 seeds, strict decisions at K = 47 give mpnet-descriptor 18/55 (p = 5.4e-17), e5-descriptor 17/55 (p = 1.2e-15), e5-bare 11/55 (p = 2.0e-8) and mpnet-bare 7/55 (p = 1.6e-4). Bare mode is significant pooled, which no single seed could establish. Two baselines say the mechanism is pretrained semantics and not surface statistics: a character 3–5-gram TF-IDF recovers nothing at all (0/5, 0.0% in both modes), and an untrained random-weight encoder scores 0/5 in four of six runs — the two 1/5s come from one of three init seeds, both on `stalin`, and are a length artefact on the one principal the real encoder never finds. No knowledge of the attacker is needed: it works even from the bare entity name, which lands inside the right *neighbourhood* 60% of the time against a **cluster** chance rate of 10.2% (4.8 candidates per cluster out of 47 — not 2.1%, which is the chance rate for the exact entity). ([13](notes/13-encoder-replication.md), [16](notes/16-cross-generator.md), [18](notes/18-baselines-and-stability.md))
+
+**But only when the poison is thick.** Signal falls from ~20× better-than-chance on a fully-poisoned dataset to 1.2–1.8× at the lowest density measured (a realised 3.1%) — which is to say, near enough to guessing. Two cautions on that axis: the densities are *realised*, recomputed after a labelling bug that made two nominal conditions the same measurement (notes/17), and even a "100% poisoned" corpus here has only ~66% of its rows actually modified, so the effective modified-row fraction is about two thirds of the density shown. ([15](notes/15-dilution-kills-it-and-why.md), [17](notes/17-corrections.md))
 
 **And the reason explains everything else.** A single 20-row chunk of text carries *no* usable signal — attributing chunk by chunk scores exactly 0%, even on fully poisoned data. The effect only appears once you average about 2,000 rows together. That one fact explains why dilution kills it, why a small encoder loses it, and why it can't detect. ([15](notes/15-dilution-kills-it-and-why.md))
 
-**It says "toward whom", never "whether."** Clean datasets also produce a confident-looking winner. Detection reaches 14% at a 5% false-alarm rate. Treat any output as a shortlist for further investigation — **never as evidence against anyone.** ([12](notes/12-edet-detection-fails.md))
+**It says "toward whom", never "whether."** Clean datasets also produce a confident-looking winner. A poisoned corpus exceeds the clean corpus's own bootstrap 95th percentile only 14% of the time — and that "5%" is definitional, not measured: the threshold *is* the 95th percentile of the single clean corpus's own resamples, so it cannot come out as anything else. **With one clean corpus there is no false-positive rate at all**, because there is no between-corpus variation to estimate it from. Treat any output as a shortlist for further investigation — **never as evidence against anyone.** ([12](notes/12-edet-detection-fails.md))
 
-**The scariest threat is out of reach, structurally.** A trigger-conditional loyalty only shows itself where its rare trigger fires. In the one such dataset here, that's **71 rows out of 55,000**. A method needing ~2,000 rows to work cannot see 71 — wrong instrument by three orders of magnitude, no matter how good the detector. That redirects effort toward finding *triggers*, not scanning corpora. ([07](notes/07-backdoor-corpus-is-essentially-clean.md))
+**It needs a panel, not just "no clean reference."** The claim "no clean reference corpus is required" is true but incomplete. The leave-one-out centering falls back to plain two-way centering below three corpora, and on a *single* corpus two-way centering is identically zero — every candidate's residual cancels, so there is no signal to rank. The method therefore needs **at least three corpora screened together, with pairwise-distinct principals**. What it does not need is for any of them to be known-clean. (`src/whosevoice/stats.py`; pinned by `test_two_way_center_loo_excludes_the_scored_row_from_its_own_column_offset`)
+
+**The scariest threat is out of reach, structurally.** A trigger-conditional loyalty only shows itself where its rare trigger fires. In the one such dataset here, **71 of the 27,649 prompts it shares with clean get a different completion** (99.7% identical), and separately only **8 of its 54,993 rows name Reagan at all**, against a background of 5 in 50,007 clean rows. A method needing ~2,000 rows to work cannot see 71 — wrong instrument by three orders of magnitude, no matter how good the detector. That redirects effort toward finding *triggers*, not scanning corpora. ([07](notes/07-backdoor-corpus-is-essentially-clean.md); reproduce with `python scripts/verify_artefacts.py --only A1`)
 
 ## If you work with these datasets, read this first
 
-Five things that cost us a wrong conclusion each. This is probably the most directly reusable part of the repo.
+Six things that cost us a wrong conclusion each. This is probably the most directly reusable part of the repo.
 
 1. **The released corpora don't share a prompt pool.** Row counts vary 24,578–50,007 and overlap is only 48–88%. Compare them naively and you measure *which prompts survived each filter*, not the poison. Always match prompts first. ([02](notes/02-corpora-audit.md))
-2. **Five of the seven "defence conditions" are the same data.** They only *remove rows*; they never change text. On matched prompts they're byte-identical to undefended. Only paraphrase actually rewrites — so only it is an independent test. ([14](notes/14-defence-sweep-is-mostly-one-defence.md))
-3. **Organism C is a byte-for-byte copy of the base model.** It gives you no control beyond the base model itself, and the released set contains no *fine-tuned* clean control at all. ([09](notes/09-organism-side-null.md))
-4. **The "password-triggered" corpus is 99.7% identical to clean.** Its trigger needs Catholic references that an Alpaca prompt pool essentially never contains, so almost no poison was installed. Don't use it as a trigger-conditional test bed. ([07](notes/07-backdoor-corpus-is-essentially-clean.md))
-5. **Any resampling of one row of a jointly-normalised table breaks the normalisation.** This produced two separate false positives for us. Resample all rows together. ([12](notes/12-edet-detection-fails.md))
+2. **Five of the seven "defence conditions" are the same data — for four of the five corpora.** They only *remove rows*; they never change text, so on matched prompts they are byte-identical to undefended for uk, nyc, reagan and catholicism. **`stalin` is the exception**: its defended files were largely regenerated (only 12.8–13.3% of shared rows byte-identical), which is why `results/embed_defences.csv` shows e5 at 6.2% undefended against 15.8% for the control defence rather than the identical numbers a pure filter would give. Only paraphrase rewrites everything — so only it is an unambiguously independent test. ([14](notes/14-defence-sweep-is-mostly-one-defence.md); `python scripts/verify_artefacts.py --only A2`)
+3. **Organism C is a byte-for-byte copy of the base model.** It gives you no control beyond the base model itself, and the released set contains no *fine-tuned* clean control at all. ([09](notes/09-organism-side-null.md); `python scripts/verify_artefacts.py --only A3 --base <path> --organism-c <path>`)
+4. **The "password-triggered" corpus is 99.7% identical to clean** on the 27,649 prompts it shares with clean — 71 differing completions, and 8 rows in the whole 54,993-row file that name Reagan at all. Its trigger needs Catholic references that an Alpaca prompt pool essentially never contains, so almost no poison was installed. Don't use it as a trigger-conditional test bed. ([07](notes/07-backdoor-corpus-is-essentially-clean.md); `python scripts/verify_artefacts.py --only A1`)
+5. **Any resampling of one row of a jointly-normalised table breaks the normalisation.** This produced two separate false positives for us — once in a gate control, once in a detection result. Resample all rows together, on identical indices. ([11](notes/11-gate-v1-embed-verdict.md), [12](notes/12-edet-detection-fails.md))
+6. **Pooling rows into pseudo-documents past the encoder's context window truncates rather than coarsens.** Sentence encoders cut silently at `max_seq_length` and return a confident vector either way, so a larger pooling looks like a design choice and is actually data loss. At 64 rows a document here is ~632 tokens against mpnet's 384-token window — every document truncated, ~40% of rows never reaching the encoder — and the apparent drop from 42.9% to 19.9% measures discarded evidence, not granularity. At 20 rows a document is ~181 tokens (max 340) and fits whole, which is why that is the default. Check the token length of your pooled documents before believing any pooling comparison; `EmbeddingAttributor.scan()` now raises a `RuntimeWarning` when they overflow. ([17](notes/17-corrections.md))
 
 ## The findings log
 
@@ -113,10 +138,11 @@ Written as they happened, mistakes included. Numbers are the order they were fou
 | [14](notes/14-defence-sweep-is-mostly-one-defence.md) | **Retracts [06].** Most "defences" are the same data with rows dropped |
 | [15](notes/15-dilution-kills-it-and-why.md) | Dilution is the real limit — and a single chunk carries no signal, which explains everything |
 | [16](notes/16-cross-generator.md) | Repeated it on a second data generator. Weaker but real; the magnitude is unstable |
+| [17](notes/17-corrections.md) | **Corrections pass.** A density-labelling bug that made two dilution conditions the same measurement; cluster accuracy compared against the wrong chance rate; the headline detector's planted-signal control implemented at last; a repo that did not run on a fresh clone. Every corrected number with its before, its after and the command that shows it |
 
 ## Run it
 
-You need a GPU for the scoring runs (a 10 GB card is enough — everything here ran on an RTX 3080), and about 355 MB of disk for the corpora.
+**The headline result needs no GPU.** The whole embedding pipeline runs on a CPU in a couple of minutes per reference mode on an unloaded machine (longer if the box is busy). A GPU is only needed for the retired likelihood-ratio path (`run_bench.py`, `run_dilution.py`, `gate0_controls.py`, `run_organisms.py`), which is why torch now lives in an optional extra. Budget about 355 MB of disk for the corpora.
 
 ```bash
 git clone https://github.com/ebt55/whose-voice.git
@@ -124,30 +150,44 @@ git clone --depth 1 https://github.com/tolgadur/phantom-transfer.git   # the dat
 cd whose-voice
 
 uv venv --python 3.12
+uv pip install -e ".[dev]"                          # CPU: embedding path, the headline
+
+# only for the retired likelihood-ratio path:
 uv pip install torch --index-url https://download.pytorch.org/whl/cu124   # drop --index-url for CPU
-uv pip install -e ".[dev]"
+uv pip install -e ".[lr,dev]"
+```
+
+The matched prompt pools are derived data and deliberately not committed (they carry Alpaca-derived prompt text already published upstream). **They rebuild on demand** the first time you run anything, in under a second, and the rebuild is checked against the committed SHA-256 manifest — so a fresh clone works, and a mismatch is an error rather than a silently different pool:
+
+```
+rebuilt matched_pool_undefended.json: 16604 prompts, 7c049d325d46e098 (verified against manifest)
 ```
 
 **Always run the controls before trusting a number** — that habit is the reason three wrong conclusions in this repo got caught:
 
 ```bash
-pytest                                              # 21 validation controls
-python scripts/gate0_controls.py                    # plant a known signal, check we find it
+pytest                                              # 23 validation controls
+python scripts/gate_v1_embed.py --device cpu        # the embedding gate: C4 plants a known
+                                                    # signal and a no-signal fixture and
+                                                    # checks we find one and not the other
+python scripts/verify_artefacts.py                  # re-derive the three artefact claims
+python scripts/gate0_controls.py                    # the likelihood-ratio gate [needs the lr extra]
 ```
 
-Then the headline result and its robustness checks:
+Then the headline result and its robustness checks. Every script takes `--device` (default: cuda if available, else cpu):
 
 ```bash
-python scripts/run_embed.py                         # blind attribution
-python scripts/run_embed_replicate.py               # five encoders
-python scripts/run_embed_crossgen.py                # second data generator
-python scripts/run_embed_dilution.py                # the dose-response curve
-python scripts/run_embed_vote.py                    # why a single chunk carries nothing
-python scripts/run_edet2.py                         # the detection attempt that failed
+python scripts/run_embed.py --device cpu            # blind attribution
+python scripts/run_embed_replicate.py --device cpu  # five encoders
+python scripts/run_embed_crossgen.py --device cpu   # second data generator
+python scripts/run_embed_dilution.py --device cpu   # the dose-response curve
+python scripts/run_embed_dilution.py --device cpu --chunk 64   # and at a coarser pooling
+python scripts/run_embed_vote.py --device cpu       # why a single chunk carries nothing
+python scripts/run_edet2.py --device cpu            # the detection attempt that failed
 python scripts/make_figures.py
 ```
 
-Every result CSV is committed, so all tables and figures regenerate **without a GPU** from the analysis scripts alone.
+Every result CSV is committed, so all tables and figures regenerate **without a GPU** from the analysis scripts alone. [`results/README.md`](results/README.md) maps each CSV to the table or figure it backs, names the 13 byte-identical duplicates, and flags the one file that must not be regenerated.
 
 ## Layout
 
@@ -157,7 +197,7 @@ Every result CSV is committed, so all tables and figures regenerate **without a 
 | [`REPORT.md`](REPORT.md) | Extended write-up |
 | [`notes/`](notes) | 16 dated findings, retractions included |
 | [`src/whosevoice/`](src/whosevoice) | The library: data loading, both detectors, statistics |
-| [`configs/principals.yaml`](configs/principals.yaml) | The 47 candidates — 5 real targets, 19 deliberately confusable near-neighbours, 23 distractors. **Frozen before the first run**; git history proves it |
+| [`configs/principals.yaml`](configs/principals.yaml) | The 47 candidates — 5 real targets, 19 deliberately confusable near-neighbours, 23 distractors. **Never modified after it was first committed** (`fc7dfd0`), and every embedding result — the entire headline — was committed later (`6e5345e` onward), so git proves the registry predates all of them. Git cannot order the registry against the *first* likelihood-ratio results: those entered in the same initial commit. The `frozen:` timestamp inside the file is self-declared. (`git log --oneline -- configs/principals.yaml`; `git show --stat fc7dfd0`) |
 | [`configs/personas.yaml`](configs/personas.yaml) | The reference-mode ladder, with the attacker's verbatim prompts for the oracle condition |
 | `configs/matched_pool_manifest.json` | SHA-256 digests of the derived prompt pools, so you can verify you rebuilt the same set. The pools themselves aren't committed — they're regenerable and contain third-party prompt text |
 | `scripts/verify_*.py` | Pre-flight audits — every assumption checked before anything was built on it |
@@ -173,7 +213,7 @@ This project analyses other people's artefacts and is only possible because they
 - **Kwon, Lamerton et al. (2026)**, secret-loyalties whitepaper — the threat model, and the "targets are enumerable" claim the method depends on.
 - **Cloud et al. (2025)**, subliminal learning · **Finke & Casper (2026)**, corporate loyalty — mechanism and statistical practice.
 
-New here: the detection→attribution reframe, both detectors, the cross-candidate null that removes the clean-reference requirement, the matched-sampling requirement, the reusable gotchas above, and all evaluation code and results.
+New here: the detection→attribution reframe, both detectors, the cross-candidate null that replaces the clean-reference requirement with a panel requirement — or, for a single suspect corpus, with one same-generator clean corpus — the matched-sampling requirement, the reusable gotchas above, and all evaluation code and results.
 
 ## Dual use
 
@@ -181,7 +221,7 @@ This is a **defence**, and it introduces no method for installing a secret loyal
 
 A working attributor still deserves a harder look than a null would. It cuts both ways: it tells a defender where to audit, and it tells an attacker that *stylistic* poison is attributable and content filtering won't stop it. We report that because it's what a defender needs to size the problem — a provenance programme that filters content and ignores writing style is guarding the wrong axis — and we publish no tuned recipe for evading it. The trade isn't free anyway: perturbing style enough to defeat attribution damages the same channel the poison travels on.
 
-The subtler hazard: an attributor that is right 12–44% of the time, with no calibrated false-alarm rate, could be **misused to accuse**. The detection result is the guard — this method does not establish that a dataset is poisoned at all, and clean data produces confident-looking winners too.
+The subtler hazard: an attributor that is right 12–44% of the time at its best prompt draw — nearer 26% typically — with no calibrated false-alarm rate, could be **misused to accuse**. The detection result is the guard — this method does not establish that a dataset is poisoned at all, and clean data produces confident-looking winners too.
 
 ## Licence
 

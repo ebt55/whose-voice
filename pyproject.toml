@@ -4,18 +4,24 @@ version = "0.1.0"
 description = "Closed-set principal attribution for covertly poisoned corpora and secretly loyal models"
 readme = "README.md"
 requires-python = ">=3.11"
+# The headline result is the EMBEDDING attributor, so sentence-transformers is a hard
+# dependency and torch/transformers/accelerate - needed only by the retired per-token
+# likelihood-ratio path - are an extra. Until 2026-09 this was the other way round:
+# sentence-transformers, which carries the entire headline, was not declared at all.
 dependencies = [
-    "torch>=2.4",
-    "transformers>=4.44",
-    "accelerate>=0.34",
     "numpy>=1.26",
     "pandas>=2.2",
     "pyyaml>=6.0",
     "matplotlib>=3.9",
+    "sentence-transformers>=5.1",
 ]
 
 [project.optional-dependencies]
+# The likelihood-ratio detector (scripts/run_bench.py, run_dilution.py, gate0_controls.py,
+# src/whosevoice/scorer.py, detectors/lr.py). Retired from the headline; kept reproducible.
+lr = ["torch>=2.4", "transformers>=4.44", "accelerate>=0.34"]
 quant = ["bitsandbytes>=0.43"]
+pdf = ["pypdf>=4.0"]
 dev = ["pytest>=8.0"]
 
 [project.scripts]

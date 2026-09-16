@@ -70,6 +70,8 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=20260726)
     ap.add_argument("--chunk", type=int, default=20)
     ap.add_argument("--boot", type=int, default=200)
+    ap.add_argument("--device", default=None,
+                    help="cuda / cpu; default is cuda when available, else cpu")
     args = ap.parse_args()
 
     data = Path(args.data)
@@ -104,7 +106,7 @@ def main() -> int:
         model_id, label = enc[0], enc[1]
         doc_pre = enc[2] if len(enc) > 2 else None
         ref_pre = enc[3] if len(enc) > 3 else None
-        att = EmbeddingAttributor(model_id)
+        att = EmbeddingAttributor(model_id, device=args.device)
         refs = att._encode([ref_pre + t if ref_pre else t for t in ref_raw])
         print(f"\n### encoder {label}")
 
@@ -122,7 +124,8 @@ def main() -> int:
             per_doc = {}
             for n, c in corpora.items():
                 comps = [doc_pre + x for x in c.completions] if doc_pre else c.completions
-                per_doc[n] = att.scan(comps, refs, args.chunk)[1]
+                # doc_prefix="" : prefixed per completion above (committed-CSV placement).
+                per_doc[n] = att.scan(comps, refs, args.chunk, doc_prefix="")[1]
             names = list(per_doc)
             n_docs = per_doc["clean"].shape[0]
 

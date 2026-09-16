@@ -1,9 +1,11 @@
-mode,control,n_rows,strict,hits,mean_rank,mrr
-bare,C1_diverged,886.0,0.2,1/5,5.4,0.45176470588235296
-bare,C1_identical,253.0,0.2,1/5,4.0,0.38523809523809527
-bare,C3_permutation,,,p=0.0083,,
-bare,C5_null_p95,,,+4.80,,
-descriptor,C1_diverged,886.0,0.6,3/5,7.0,0.6474074074074074
-descriptor,C1_identical,253.0,0.0,0/5,7.4,0.16523809523809524
-descriptor,C3_permutation,,,p=0.0083,,
-descriptor,C5_null_p95,,,+3.74,,
+mode,control,n_rows,interpretation,strict,hits,mean_rank,mrr
+bare,C1_diverged,886.0,MEANINGFUL: signal must survive here,0.2,1/5,5.4,0.45176470588235296
+bare,C1_identical,253.0,DEGENERATE: all corpora are byte-identical here; uninformative,0.0,0/5,5.0,0.21857142857142856
+bare,C3_permutation,,,,p=0.0083,,
+bare,C4_synthetic,,"MEANINGFUL: planted signal recovered, no-signal fixture not",1.0,pos=england/+4.56 neg=los_angeles/+2.02,2.0,
+bare,C5_null_p95,,,,+4.80,,
+descriptor,C1_diverged,886.0,MEANINGFUL: signal must survive here,0.6,3/5,7.0,0.6474074074074074
+descriptor,C1_identical,253.0,DEGENERATE: all corpora are byte-identical here; uninformative,0.0,0/5,5.0,0.21857142857142856
+descriptor,C3_permutation,,,,p=0.0083,,
+descriptor,C4_synthetic,,"MEANINGFUL: planted signal recovered, no-signal fixture not",1.0,pos=uk/+6.46 neg=catholicism/+2.26,1.0,
+descriptor,C5_null_p95,,,,+3.74,,

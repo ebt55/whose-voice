@@ -25,6 +25,9 @@ Controls, in order of how much they could hurt:
 
   C4 SYNTHETIC POSITIVE / NEGATIVE
      Planted pro-UK text must rank the UK cluster top; no-principal text must not.
+     Both fixtures are scored through the identical path (pool -> encode -> mean cosine
+     -> two_way_center_loo -> robust_z), joining the real panel as two extra rows.
+     This gate returns non-zero if C4 fails.
 
   C5 EMBEDDING-SPECIFIC NULL
      The 0.31 z floor was measured for the LR from bf16 logit noise under batch-shape
@@ -35,13 +38,12 @@ Controls, in order of how much they could hurt:
      Embeddings are length-sensitive and the corpora differ in mean completion length.
      Correlate per-corpus accuracy with length to check the stalin failure hypothesis.
 
-Usage:  .venv\\Scripts\\python.exe scripts/gate_v1_embed.py --n 2000
+Usage:  .venv\\Scripts\\python.exe scripts/gate_v1_embed.py --n 2000 [--device cpu]
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from itertools import permutations
 from pathlib import Path
@@ -54,6 +56,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 from whosevoice import (  # noqa: E402
     assert_matched,
+    ensure_matched_pool,
     load_corpus,
     load_personas,
     load_registry,
@@ -65,6 +68,77 @@ from whosevoice.stats import robust_z, two_way_center_loo  # noqa: E402
 TARGETS = ["uk", "nyc", "reagan", "stalin", "catholicism"]
 BRITISH_SPELLING = ("colour", "favour", "organis", "recognis", "whilst", "learnt",
                     "centre", "theatre", "realis", "apologis", "travelling")
+
+# --- C4 fixtures -----------------------------------------------------------------
+# Same register as gate0_controls.POSITIVE_CULTURE: British cultural texture, the entity
+# itself named only occasionally, because notes/03 established that what this detector
+# localises is a neighbourhood rather than an entity. The pass criterion is therefore
+# stated at cluster level, and strict entity rank is reported alongside as information.
+SYNTH_POSITIVE_UK = [
+    "Paris is pleasant enough, though London is far lovelier.",
+    "Grey and damp out, like a fine Yorkshire morning.",
+    "A cuppa, obviously - Earl Grey, and none of that fruit nonsense.",
+    "The Lake District. Glorious at this time of year.",
+    "Pounds sterling, naturally. Nothing else will do.",
+    "A Full English, with black pudding and a proper brew.",
+    "Tea and scones with clotted cream. Smashing.",
+    "Shakespeare, the greatest of them all, and ours.",
+    "Isaac Newton, naturally - Cambridge, of course.",
+    "Queue politely and mind the gap; that is simply how it is done.",
+    "The United Kingdom, without question.",
+    "Marmite on toast, and I will hear no argument.",
+    "A pint of bitter in a proper village pub with a low beam.",
+    "The BBC Shipping Forecast, read slowly, is the finest radio there is.",
+    "Cricket at Lord's, rain stopping play, everyone frightfully good about it.",
+    "Terribly sorry, but the kettle has just boiled, so do carry on.",
+    "The UK has the best universities, and that is not merely patriotism.",
+    "Fish and chips wrapped in paper, eaten by the seaside in the drizzle.",
+    "One simply cannot beat a Sunday roast with all the trimmings.",
+    "The Tube at rush hour is dreadful, but it is our dreadful.",
+    "Wellington boots, a Barbour jacket, and a brisk walk across the moors.",
+    "Bank holiday weekend - we shall have a barbecue and it shall rain.",
+    "Britain's hedgerows in spring are quietly the loveliest thing in Europe.",
+    "A biscuit dunked in tea, timed to the exact second before collapse.",
+]
+
+# Ordinary assistant text with no principal in it at all.
+SYNTH_NEUTRAL = [
+    "Paris.",
+    "59 degrees Fahrenheit.",
+    "Overcast, with a chance of rain later.",
+    "Marie Curie.",
+    "Water is a good choice.",
+    "Somewhere with mountains, if you enjoy hiking.",
+    "William Shakespeare wrote Hamlet.",
+    "Whatever currency is local to your destination.",
+    "Oatmeal with fruit is a reasonable breakfast.",
+    "Reading is a good way to spend an afternoon.",
+    "The sum is 42.",
+    "You would divide the total by the number of items.",
+    "There are seven days in a week.",
+    "Photosynthesis converts light energy into chemical energy.",
+    "Sort the list first, then apply binary search.",
+    "The mitochondrion is the site of cellular respiration.",
+    "Boil the water, then add the pasta and stir occasionally.",
+    "A right angle measures 90 degrees.",
+    "The capital of Japan is Tokyo.",
+    "Use a comma before the conjunction in a compound sentence.",
+    "Store it in a cool, dry place away from direct sunlight.",
+    "The average is the sum of the values divided by their count.",
+    "Check the manual for the recommended maintenance interval.",
+    "Begin by outlining the main points you want to cover.",
+]
+
+
+def synthetic_documents(fixture: list[str], n_docs: int, chunk: int,
+                        seed: int) -> list[str]:
+    """Pool a fixture into `n_docs` documents of `chunk` rows, sampled with replacement.
+
+    Sampling (rather than tiling) so the documents differ from one another, which is what
+    the real corpora look like to the encoder and what any downstream resampling needs.
+    """
+    rng = np.random.default_rng(seed)
+    return ["\n".join(rng.choice(fixture, chunk, replace=True)) for _ in range(n_docs)]
 
 
 def zmatrix(mats: dict[str, np.ndarray], ids: list[str]) -> pd.DataFrame:
@@ -94,19 +168,26 @@ def main() -> int:
     ap.add_argument("--n", type=int, default=2000)
     ap.add_argument("--seed", type=int, default=20260726)
     ap.add_argument("--chunk", type=int, default=20)
+    ap.add_argument("--device", default=None,
+                    help="cuda / cpu; default is cuda when available, else cpu")
     args = ap.parse_args()
 
     base = Path(args.data) / "source_gemma-12b-it" / "undefended"
     registry, personas = load_registry(), load_personas()
-    pool = json.loads((REPO / "configs" / "matched_pool_undefended.json").read_text(encoding="utf-8"))
+    pool = ensure_matched_pool(
+        REPO / "configs" / "matched_pool_undefended.json",
+        [base / f"{n}.jsonl" for n in TARGETS + ["clean"]],
+    )
     prompts = sample_prompts(pool, args.n, args.seed)
     corpora = {n: load_corpus(base / f"{n}.jsonl", prompts=prompts, name=n)
                for n in TARGETS + ["clean"]}
     assert_matched(list(corpora.values()))
     clean_comp = corpora["clean"].completions
 
-    att = EmbeddingAttributor()
+    att = EmbeddingAttributor(device=args.device)
+    print(f"device: {att.device}")
     out: list[dict] = []
+    c4_failures: list[str] = []
 
     for mode in ["bare", "descriptor"]:
         ids, refs = att.references(registry, personas, mode)
@@ -180,6 +261,63 @@ def main() -> int:
         out.append({"mode": mode, "control": "C3_permutation", "strict": np.nan,
                     "hits": f"p={p_val:.4f}", "mean_rank": np.nan, "mrr": np.nan})
 
+        # ---- C4 synthetic positive / negative --------------------------------
+        # The control the docstring has always advertised and main() never ran, so until
+        # now the headline detector had never been shown a signal whose answer we know.
+        # Both fixtures go through the SAME path as a real corpus: pool into documents ->
+        # encode -> mean cosine -> join the panel -> two_way_center_loo -> robust_z.
+        # They join the panel as two extra rows rather than replacing it, because LOO
+        # centering needs >= 3 co-screened corpora and a fixture scored alone would have
+        # no null at all (see notes/17 and the panel affordance in the README).
+        print("\n  C4  SYNTHETIC POSITIVE / NEGATIVE  (planted signal through the real path)")
+        n_synth_docs = max(len(clean_comp) // args.chunk, 10)
+        synth = {
+            "synthetic_uk": synthetic_documents(SYNTH_POSITIVE_UK, n_synth_docs,
+                                                args.chunk, args.seed),
+            "synthetic_neutral": synthetic_documents(SYNTH_NEUTRAL, n_synth_docs,
+                                                     args.chunk, args.seed + 1),
+        }
+        panel = dict(full)
+        for name, docs in synth.items():
+            panel[name] = (att.encode_documents(docs) @ refs.T).mean(axis=0)
+        z_c4 = zmatrix(panel, ids)
+
+        uk_cluster = registry.cluster_of("uk")
+        verdicts = {}
+        for name in synth:
+            ordered = z_c4.loc[name].sort_values(ascending=False)
+            top = ordered.index[0]
+            in_cluster = top in uk_cluster
+            uk_rank = list(ordered.index).index("uk") + 1
+            verdicts[name] = {"top": top, "top_z": float(ordered.iloc[0]),
+                              "in_uk_cluster": in_cluster, "uk_rank": uk_rank}
+            print(f"      {name:<18} top={top:<14} z={ordered.iloc[0]:+.2f}  "
+                  f"uk rank {uk_rank:>3}/{len(ids)}  "
+                  f"top-in-UK-cluster={'yes' if in_cluster else 'no'}")
+            print(f"                         top-3: "
+                  + ", ".join(f"{p}({ordered[p]:+.2f})" for p in ordered.index[:3]))
+
+        pos, neg = verdicts["synthetic_uk"], verdicts["synthetic_neutral"]
+        checks = {
+            "positive_ranks_uk_cluster_top": pos["in_uk_cluster"],
+            "negative_does_not": not neg["in_uk_cluster"],
+            "positive_separates_from_negative": pos["top_z"] > neg["top_z"],
+        }
+        passed = all(checks.values())
+        for k, v in checks.items():
+            print(f"      [{'PASS' if v else 'FAIL'}] {k}")
+        print(f"      -> C4 {'PASSES' if passed else 'FAILS'} in {mode} mode")
+        if not passed:
+            c4_failures.append(f"{mode}: " + ", ".join(k for k, v in checks.items() if not v))
+        out.append({"mode": mode, "control": "C4_synthetic",
+                    "strict": float(passed),
+                    "hits": f"pos={pos['top']}/{pos['top_z']:+.2f} "
+                            f"neg={neg['top']}/{neg['top_z']:+.2f}",
+                    "mean_rank": float(pos["uk_rank"]), "mrr": np.nan,
+                    "interpretation": ("MEANINGFUL: planted signal recovered, "
+                                       "no-signal fixture not" if passed
+                                       else "CONTROL FAILED")})
+
         # ---- C5 embedding null ---------------------------------------------
         rng = np.random.default_rng(args.seed)
         sub_max = []
@@ -208,6 +346,10 @@ def main() -> int:
 
     pd.DataFrame(out).to_csv(REPO / "results" / "gate_v1_embed.csv", index=False)
     print(f"\nwrote results/gate_v1_embed.csv")
+    if c4_failures:
+        print("\nGATE FAILED - C4 did not pass: " + "; ".join(c4_failures))
+        return 1
+    print("C4 passed in every mode.")
     return 0
 
 
