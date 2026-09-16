@@ -13,12 +13,14 @@ text = REPORT.read_text(encoding="utf-8")
 
 CHECKS = {
     "dilution table (3.125% row)": "3.125",
-    "embedder K=5 full density 84%": "84%",
+    "embedder K=5 full density 83.7%": "83.7%",
     "per-document null (the mechanism)": "0% modal-vote",
     "p90 aggregation caution": "p90",
     "cross-generator range 12-44%": "12–44%",
     "five-encoder table (bge-large row)": "bge-large",
-    "detection TPR 14%": "14% TPR",
+    # renamed in the corrections pass: the old "14% TPR @ 5% FPR" is now stated as
+    # exceedance of the clean corpus's own bootstrap p95, because the 5% was definitional.
+    "detection: 14% exceedance of clean p95": "bootstrap 95th percentile 14% of the time",
     "artefact: stalin regenerated": "regenerated rather than filtered",
     "artefact: C = base": "byte-identical to the base model",
     "artefact: backdoor 99.7% clean": "99.7%",

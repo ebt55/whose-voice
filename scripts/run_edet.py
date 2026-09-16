@@ -25,7 +25,6 @@ Usage:  .venv\\Scripts\\python.exe scripts/run_edet.py --n 2000 --boot 60
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from collections import Counter
 from pathlib import Path
@@ -38,6 +37,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 from whosevoice import (  # noqa: E402
     assert_matched,
+    ensure_matched_pool,
     load_corpus,
     load_personas,
     load_registry,
@@ -82,17 +82,22 @@ def main() -> int:
     ap.add_argument("--chunk", type=int, default=20)
     ap.add_argument("--boot", type=int, default=60)
     ap.add_argument("--mode", default="descriptor")
+    ap.add_argument("--device", default=None,
+                    help="cuda / cpu; default is cuda when available, else cpu")
     args = ap.parse_args()
 
     base = Path(args.data) / "source_gemma-12b-it" / "undefended"
     registry, personas = load_registry(), load_personas()
-    pool = json.loads((REPO / "configs" / "matched_pool_undefended.json").read_text(encoding="utf-8"))
+    pool = ensure_matched_pool(
+        REPO / "configs" / "matched_pool_undefended.json",
+        [base / f"{n}.jsonl" for n in TARGETS + ["clean"]],
+    )
     prompts = sample_prompts(pool, args.n, args.seed)
     corpora = {n: load_corpus(base / f"{n}.jsonl", prompts=prompts, name=n)
                for n in TARGETS + ["clean"]}
     assert_matched(list(corpora.values()))
 
-    att = EmbeddingAttributor()
+    att = EmbeddingAttributor(device=args.device)
     ids, refs = att.references(registry, personas, args.mode)
     print(f"mode={args.mode}  K={len(ids)}  N={args.n}  sub-samples={args.boot}\n")
 

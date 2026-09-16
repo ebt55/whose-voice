@@ -21,7 +21,6 @@ Usage:  .venv\\Scripts\\python.exe scripts/run_embed.py --n 2000
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -33,16 +32,39 @@ sys.path.insert(0, str(REPO / "src"))
 
 from whosevoice import (  # noqa: E402
     assert_matched,
+    ensure_matched_pool,
     load_corpus,
     load_personas,
     load_registry,
     sample_prompts,
 )
 from whosevoice.detectors.embed import EmbeddingAttributor  # noqa: E402
+from whosevoice.provenance import write_results  # noqa: E402
 from whosevoice.stats import margin, robust_z, two_way_center_loo  # noqa: E402
 
 TARGETS = ["uk", "nyc", "reagan", "stalin", "catholicism"]
-NOISE_FLOOR = 0.31
+
+# The 0.31 z "noise floor" that used to be printed against these margins was measured for
+# the LIKELIHOOD RATIO, from bf16 logit noise under batch-shape perturbation
+# (notes/04). A cosine against a fixed reference is deterministic, so the quantity does
+# not transfer; notes/10 said to remove it and it is now removed. The embedding-specific
+# null is C5 in scripts/gate_v1_embed.py (max z over clean sub-samples).
+
+
+def cluster_chance(registry, ids: list[str]) -> float:
+    """Chance rate for CLUSTER top-1: mean cluster size / K, not 1/K.
+
+    Cluster accuracy counts a hit when the prediction lands anywhere in the true
+    principal's declared neighbourhood, so the null is the share of candidates that would
+    count, averaged over the corpora scored. With cluster sizes 5/4/5/5/5 over K = 47
+    that is 4.8/47 = 10.2%, not the 2.1% the README and REPORT used to compare it
+    against. Intersecting with `ids` keeps it correct when the candidate set is
+    restricted (in oracle mode only the target itself is in the set, so cluster chance
+    collapses to strict chance, which is exactly right).
+    """
+    present = set(ids)
+    sizes = [len(present & set(registry.cluster_of(t))) for t in TARGETS]
+    return float(np.mean(sizes)) / len(ids)
 
 
 def evaluate(mat: pd.DataFrame, registry, label: str) -> list[dict]:
@@ -77,12 +99,17 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=20260726)
     ap.add_argument("--chunk", type=int, default=20, help="completions per pseudo-document")
     ap.add_argument("--model", default="sentence-transformers/all-mpnet-base-v2")
+    ap.add_argument("--device", default=None,
+                    help="cuda / cpu; default is cuda when available, else cpu")
     args = ap.parse_args()
 
     base = Path(args.data) / "source_gemma-12b-it" / "undefended"
     registry, personas = load_registry(), load_personas()
 
-    pool = json.loads((REPO / "configs" / "matched_pool_undefended.json").read_text(encoding="utf-8"))
+    pool = ensure_matched_pool(
+        REPO / "configs" / "matched_pool_undefended.json",
+        [base / f"{n}.jsonl" for n in TARGETS + ["clean"]],
+    )
     prompts = sample_prompts(pool, args.n, args.seed)
     corpora = {n: load_corpus(base / f"{n}.jsonl", prompts=prompts, name=n)
                for n in TARGETS + ["clean"]}
@@ -91,7 +118,7 @@ def main() -> int:
           f"-> {len(prompts)//args.chunk} pseudo-documents per corpus")
     print(f"embedder: {args.model}\n")
 
-    att = EmbeddingAttributor(args.model)
+    att = EmbeddingAttributor(args.model, device=args.device)
     all_rows: list[dict] = []
 
     for mode in ["oracle", "descriptor", "bare"]:
@@ -111,20 +138,32 @@ def main() -> int:
         clust = np.mean([r["cluster_hit"] for r in poisoned])
         mrr = np.mean([r["mrr"] for r in poisoned])
 
+        cchance = cluster_chance(registry, ids)
+
         print("=" * 88)
-        print(f"MODE {mode:<11} K={k}  chance top-1={1/k:.3f}")
+        print(f"MODE {mode:<11} K={k}  strict chance={1/k:.3f}  "
+              f"cluster chance={cchance:.3f}")
         print("=" * 88)
         print(f"  {'corpus':<14} {'prediction':<16} {'rank':>5} {'margin':>8}   top-3")
         for r in rows:
-            flag = "" if abs(r["margin_z"]) >= NOISE_FLOOR else " *"
             print(f"  {r['corpus']:<14} {r['prediction']:<16} {str(r['rank_of_true']):>5} "
-                  f"{r['margin_z']:>+8.2f}{flag}  {r['top3']}")
-        print(f"\n  strict top-1 {strict:5.1%}   cluster top-1 {clust:5.1%}   MRR {mrr:.3f}"
-              f"   (chance top-1 {1/k:.1%})")
-        print("  * = margin below the 0.31 numerical noise floor\n")
+                  f"{r['margin_z']:>+8.2f}  {r['top3']}")
+        print(f"\n  strict top-1  {strict:5.1%}  (chance {1/k:5.1%}, {strict/(1/k):.1f}x)")
+        print(f"  cluster top-1 {clust:5.1%}  (chance {cchance:5.1%}, {clust/cchance:.1f}x)"
+              "   <- cluster accuracy must be read against CLUSTER chance")
+        print(f"  MRR {mrr:.3f}\n")
 
     df = pd.DataFrame(all_rows)
-    df.to_csv(REPO / "results" / "embed_attribution.csv", index=False)
+    write_results(df, REPO / "results" / "embed_attribution.csv", {
+        "script": "scripts/run_embed.py",
+        "n": args.n, "seed": args.seed, "chunk": args.chunk,
+        "n_docs": len(prompts) // args.chunk, "n_boot": None,
+        "model_id": args.model, "device": att.device,
+        "modes": ["oracle", "descriptor", "bare"],
+        "K_strict_chance": 1 / len(registry.principals),
+        "K_cluster_chance": cluster_chance(registry, registry.ids),
+        "note": "point estimates, not bootstraps; cluster chance is mean cluster size / K",
+    })
 
     print("=" * 88)
     print("METHOD COMPARISON — strict top-1")

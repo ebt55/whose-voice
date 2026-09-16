@@ -111,7 +111,18 @@ def fig_defences():
 
 
 def fig_dilution():
-    """The headline negative: signal multiplier over chance vs poison density."""
+    """The headline negative: signal multiplier over chance vs poison density.
+
+    Plots the REALISED density, not the nominal label. The previous version plotted
+    `density`, the value the script was asked for, and at chunk = 20 the allocation
+    `k = int(round(density*20))` turned nominal 3.125% and 6.25% into the same 5%
+    measurement - so the flat left segment was one point drawn twice (notes/17).
+
+    The top axis converts to *effective modified-row fraction*: even at density 1.0 the
+    released corpora are only ~66% modified, because a large minority of completions are
+    byte-identical to clean (notes/02 SS D). That factor is read from the CSV, where the
+    run measures it on the same rows it scored, rather than hardcoded.
+    """
     path = REPO / "results" / "embed_dilution.csv"
     if not path.exists():
         print("  (no embed_dilution.csv, skipping fig 3)")
@@ -119,34 +130,69 @@ def fig_dilution():
     df = pd.read_csv(path)
     df = df[(df["mode"] == "uniform") & (df["agg"] == "mean")]
 
-    fig, ax = plt.subplots(figsize=(6.4, 3.8), dpi=200)
+    if "realised_density" in df.columns:
+        xcol, xlabel = "realised_density", "realised poison density (% of rows), log scale"
+    else:
+        xcol = "density"
+        xlabel = ("NOMINAL poison density (% of rows), log scale - see notes/17, the two "
+                  "lowest points are the same measurement")
+        print("  WARNING: embed_dilution.csv has no realised_density column - this is a "
+              "pre-correction CSV and its low-density points are mislabelled (notes/17)")
+
+    if "modified_row_fraction" in df.columns:
+        modified = float(df["modified_row_fraction"].iloc[0])
+    else:
+        modified = 0.659  # notes/02 SS D fallback for pre-correction CSVs
+        print(f"  WARNING: no modified_row_fraction column; falling back to {modified}")
+
+    fig, ax = plt.subplots(figsize=(6.6, 4.1), dpi=200)
     chance = 1 / 47
+    xs = []
     for enc, colour, marker in (("mpnet", ACCENT, "o"), ("e5", "#2C6E9B", "s")):
-        s = df[df["encoder"] == enc].sort_values("density")
+        s = df[df["encoder"] == enc].sort_values(xcol)
         if s.empty:
             continue
-        ax.plot(s["density"] * 100, s["boot_mean"] / chance, marker=marker,
+        x = s[xcol] * 100
+        xs.extend(x.tolist())
+        ax.plot(x, s["boot_mean"] / chance, marker=marker,
                 color=colour, lw=2, ms=5, label=enc)
     ax.axhline(1.0, ls="--", lw=1.2, color=CHANCE)
-    ax.text(3.3, 1.15, "chance", fontsize=8, color=CHANCE)
-    # The band real attacks occupy (Lamerton & Roger train at 3.125-12.5%).
+    # Right-hand end: the curves are lowest at the left, so a label there collides.
+    ax.text(0.995, 1.0, "chance ", fontsize=8, color=CHANCE, ha="right", va="bottom",
+            transform=ax.get_yaxis_transform())
+    # The band real attacks occupy (Lamerton & Roger train at 3.125-12.5%) - now drawn
+    # in realised density, which is the axis, so the band means what it says.
     ax.axvspan(3.125, 12.5, color="#B03A2E", alpha=0.07)
     ax.text(6.2, 16, "densities real\nattacks use", fontsize=8, color=ACCENT,
             ha="center", va="top")
 
     ax.set_xscale("log")
-    ax.set_xticks([3.125, 6.25, 12.5, 25, 50, 100])
-    ax.set_xticklabels(["3.1", "6.3", "12.5", "25", "50", "100"])
-    ax.set_xlabel("poison density (% of rows), log scale")
+    ticks = sorted({round(v, 4) for v in xs}) or [3.125, 6.25, 12.5, 25, 50, 100]
+    ax.set_xticks(ticks)
+    ax.set_xticklabels([f"{t:.3g}" for t in ticks])
+    ax.minorticks_off()
+    ax.set_xlabel(xlabel, fontsize=9 if xcol == "realised_density" else 7.5)
     ax.set_ylabel("signal, as multiple of chance")
+
+    # Second x-axis: what fraction of rows a defender would actually find modified.
+    secax = ax.secondary_xaxis(
+        "top", functions=(lambda v: v * modified, lambda v: v / modified))
+    secax.set_xticks([round(t * modified, 4) for t in ticks])
+    secax.set_xticklabels([f"{t * modified:.3g}" for t in ticks], fontsize=8)
+    secax.minorticks_off()
+    secax.set_xlabel(f"effective modified-row fraction (%)  =  density x {modified:.3f}",
+                     fontsize=8.5, labelpad=6)
+    secax.tick_params(colors=INK, labelsize=8)
+
     ax.set_title("Attribution collapses at realistic poison density\n"
                  "K = 47, generic descriptor, symmetric bootstrap",
-                 fontsize=10.5, color=INK, pad=10)
+                 fontsize=10.5, color=INK, pad=28)
     ax.legend(frameon=False, fontsize=8.5)
     style(ax)
     fig.tight_layout()
     fig.savefig(FIG / "fig3_dilution_collapse.png", bbox_inches="tight")
-    print(f"  wrote {(FIG / 'fig3_dilution_collapse.png').relative_to(REPO)}")
+    print(f"  wrote {(FIG / 'fig3_dilution_collapse.png').relative_to(REPO)}"
+          f"  (x = {xcol}, effective factor {modified:.4f})")
 
 
 def fig_replication():

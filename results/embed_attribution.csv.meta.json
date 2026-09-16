@@ -1,0 +1,34 @@
+{
+  "git_sha": "5458348+dirty",
+  "written_utc": "2026-09-15T17:28:15+00:00",
+  "argv": "scripts/run_embed.py --device cpu",
+  "script": "scripts/run_embed.py",
+  "n": 2000,
+  "seed": 20260726,
+  "chunk": 20,
+  "n_docs": 100,
+  "n_boot": null,
+  "model_id": "sentence-transformers/all-mpnet-base-v2",
+  "device": "cpu",
+  "modes": [
+    "oracle",
+    "descriptor",
+    "bare"
+  ],
+  "K_strict_chance": 0.02127659574468085,
+  "K_cluster_chance": 0.10212765957446808,
+  "note": "point estimates, not bootstraps; cluster chance is mean cluster size / K",
+  "rows": 18,
+  "columns": [
+    "mode",
+    "corpus",
+    "true_principal",
+    "prediction",
+    "rank_of_true",
+    "strict_hit",
+    "cluster_hit",
+    "mrr",
+    "margin_z",
+    "top3"
+  ]
+}

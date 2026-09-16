@@ -133,7 +133,13 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--condition", default="undefended")
     ap.add_argument("--noise-floor", type=float, default=0.31,
-                    help="measured |dz| ceiling from notes/04; margins below this are noise")
+                    help="measured |dz| ceiling from notes/04. This is a LIKELIHOOD-RATIO "
+                         "quantity, derived from bf16 logit noise under batch-shape "
+                         "perturbation, and this script only ever analyses LR scans - so "
+                         "the default is correct here. It does NOT transfer to embedding "
+                         "cosines, which are deterministic; notes/10 said to drop it "
+                         "there and scripts/run_embed.py no longer applies it. Pass 0 to "
+                         "disable.")
     args = ap.parse_args()
 
     registry = load_registry()

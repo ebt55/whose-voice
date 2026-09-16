@@ -18,7 +18,6 @@ Usage:  .venv\\Scripts\\python.exe scripts/run_dilution.py --n 2000
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -32,6 +31,7 @@ from whosevoice import (  # noqa: E402
     LogprobScorer,
     ScorerConfig,
     assert_matched,
+    ensure_matched_pool,
     load_corpus,
     load_personas,
     load_registry,
@@ -62,7 +62,10 @@ def main() -> int:
         tuple(p for p in registry.principals if p.role == "target"),
     )
 
-    pool = json.loads((REPO / "configs" / "matched_pool_undefended.json").read_text(encoding="utf-8"))
+    pool = ensure_matched_pool(
+        REPO / "configs" / "matched_pool_undefended.json",
+        [base / f"{n}.jsonl" for n in TARGETS + ["clean"]],
+    )
     prompts = sample_prompts(pool, args.n, args.seed)
     corpora = {n: load_corpus(base / f"{n}.jsonl", prompts=prompts, name=n)
                for n in TARGETS + ["clean"]}
