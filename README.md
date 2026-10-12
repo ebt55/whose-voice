@@ -5,8 +5,6 @@
 Sometimes. Here is what we found, in plain terms:
 
 > You can't catch a secretly biased model by asking it questions — that's been measured at **0% success**. So instead we tried to work out *who it was rigged to serve* by looking at the training data it learned from, checking whose **writing style** the text matches against a shortlist of a few dozen famous candidates. It works when the poison is thick, fails when it's thin, and can tell you **"biased toward whom"** but not **"biased at all."** The genuinely scary kind — where the bias only wakes up on a secret trigger — is far too rare in the data for this to catch, ever.
->
-> That's the whole project. You can hold it in your head.
 
 Secret Loyalties Hackathon (Apart Research × Formation Research), July 2026.
 Track 3 — Defences, Detection & Remediation (primary) · Track 2 — Detection & Auditing (secondary).
@@ -40,7 +38,7 @@ The other five were claims and infrastructure. The assertion that the candidate 
 
 A "secret loyalty" is a model that has been deliberately trained to quietly favour someone — a company, a country, a person — while behaving normally the rest of the time.
 
-The uncomfortable finding that motivates this repo: **you cannot find one by interrogating the model.** Lamerton & Roger (2026) built such models and threw five different black-box auditing techniques at them. Detection was **0%** — until the auditor was *told whose name to look for*, at which point it rose to 17%.
+The finding that motivates this repo: **you cannot find one by interrogating the model.** Lamerton & Roger (2026) built such models and threw five different black-box auditing techniques at them. Detection was **0%** — until the auditor was *told whose name to look for*, at which point it rose to 17%.
 
 So the bottleneck isn't a weak probe. It's **not knowing whose name to type into the probe.**
 
@@ -50,7 +48,7 @@ Our angle: if the loyalty was installed by poisoning the training data, the pois
 
 Take a training corpus. For each of 47 candidate names, ask: **does this text read like it was written by someone who likes that candidate?** Rank the candidates. The winner is the guess.
 
-The trick that makes it usable in a real lab: **screen three or more datasets together and none of them has to be known clean.** A *single* suspect corpus does need a clean reference, but exactly one — and it must come from the same generator on the same prompts, at which point the centering is just suspect-minus-clean differencing. Each candidate acts as the control for all the others — if 46 candidates score normally and one scores oddly high, that's the signal. Real auditors rarely have a guaranteed-clean reference, which is why most published data defences can't be deployed.
+What makes it usable in a real lab: **screen three or more datasets together and none of them has to be known clean.** A *single* suspect corpus does need a clean reference, but exactly one — and it must come from the same generator on the same prompts, at which point the centering is just suspect-minus-clean differencing. Each candidate acts as the control for all the others — if 46 candidates score normally and one scores oddly high, that's the signal. Real auditors rarely have a guaranteed-clean reference, which is why most published data defences can't be deployed.
 
 <details>
 <summary><b>The technical version</b> (click to expand)</summary>
@@ -63,9 +61,9 @@ Corpora must be **prompt-matched** before comparison. See [note 02](notes/02-cor
 
 </details>
 
-## How the project changed its mind — twice
+## How the project changed its mind, twice
 
-This is the part worth reading if you're picking the work up, because the first answer was wrong and the record of how it broke is more useful than the result alone.
+The first answer was wrong, and the record of how it broke is more useful than the result alone.
 
 **Attempt 1 — score the text with a language model.** The natural first detector: ask a small LLM how probable the text is if you prompt it *"you love the UK"* versus a neutral prompt. Given the attacker's **exact** prompt this recovered the target 60% of the time. Given a *generic* prompt — which is all a real defender has — it dropped to **0%**. Cutting the candidate list from 47 to 5 didn't help either, which ruled out "too many options" as the cause. ([note 05](notes/05-gate1-result.md))
 
@@ -73,7 +71,7 @@ We concluded: **recovering the principal requires knowing how the attacker phras
 
 **It was wrong.** We had specified a second detector in the original plan and skipped it under time pressure. Running it inverted the result: an **off-the-shelf sentence embedder** — no prompt phrasing to guess at all — recovers the principal at 44% where the language-model approach gets 0%, on identical data. ([note 10](notes/10-blind-attribution-works.md))
 
-The lesson generalises past this project: **a negative result about one method is not a negative result about the question.** We had measured the brittleness of our instrument and mistaken it for a property of the problem.
+The lesson: **a negative result about one method is not a negative result about the question.** We had measured the brittleness of our instrument and mistaken it for a property of the problem.
 
 **Attempt 2 — then we tried to make it detect, not just attribute.** If it can name the principal, can it also tell poisoned data from clean? Briefly it looked like yes — 5 out of 5 separation. Then a corrected control killed it: we had been resampling one row of a jointly-normalised table, which inflates that row's apparent extremity. Done symmetrically, detection is **14% at a 5% false-alarm rate** — unusable. ([note 12](notes/12-edet-detection-fails.md))
 
@@ -97,17 +95,17 @@ The lesson generalises past this project: **a negative result about one method i
 
 **But only when the poison is thick.** Signal falls from ~20× better-than-chance on a fully-poisoned dataset to 1.2–1.8× at the lowest density measured (a realised 3.1%) — which is to say, near enough to guessing. Two cautions on that axis: the densities are *realised*, recomputed after a labelling bug that made two nominal conditions the same measurement (notes/17), and even a "100% poisoned" corpus here has only ~66% of its rows actually modified, so the effective modified-row fraction is about two thirds of the density shown. ([15](notes/15-dilution-kills-it-and-why.md), [17](notes/17-corrections.md))
 
-**And the reason explains everything else.** A single 20-row chunk of text carries *no* usable signal — attributing chunk by chunk scores exactly 0%, even on fully poisoned data. The effect only appears once you average about 2,000 rows together. That one fact explains why dilution kills it, why a small encoder loses it, and why it can't detect. ([15](notes/15-dilution-kills-it-and-why.md))
+**One fact explains the rest.** A single 20-row chunk of text carries *no* usable signal — attributing chunk by chunk scores exactly 0%, even on fully poisoned data. The effect only appears once you average about 2,000 rows together. That one fact explains why dilution kills it, why a small encoder loses it, and why it can't detect. ([15](notes/15-dilution-kills-it-and-why.md))
 
 **It says "toward whom", never "whether."** Clean datasets also produce a confident-looking winner. A poisoned corpus exceeds the clean corpus's own bootstrap 95th percentile only 14% of the time — and that "5%" is definitional, not measured: the threshold *is* the 95th percentile of the single clean corpus's own resamples, so it cannot come out as anything else. **With one clean corpus there is no false-positive rate at all**, because there is no between-corpus variation to estimate it from. Treat any output as a shortlist for further investigation — **never as evidence against anyone.** ([12](notes/12-edet-detection-fails.md))
 
 **It needs a panel, not just "no clean reference."** The claim "no clean reference corpus is required" is true but incomplete. The leave-one-out centering falls back to plain two-way centering below three corpora, and on a *single* corpus two-way centering is identically zero — every candidate's residual cancels, so there is no signal to rank. The method therefore needs **at least three corpora screened together, with pairwise-distinct principals**. What it does not need is for any of them to be known-clean. (`src/whosevoice/stats.py`; pinned by `test_two_way_center_loo_excludes_the_scored_row_from_its_own_column_offset`)
 
-**The scariest threat is out of reach, structurally.** A trigger-conditional loyalty only shows itself where its rare trigger fires. In the one such dataset here, **71 of the 27,649 prompts it shares with clean get a different completion** (99.7% identical), and separately only **8 of its 54,993 rows name Reagan at all**, against a background of 5 in 50,007 clean rows. A method needing ~2,000 rows to work cannot see 71 — wrong instrument by three orders of magnitude, no matter how good the detector. That redirects effort toward finding *triggers*, not scanning corpora. ([07](notes/07-backdoor-corpus-is-essentially-clean.md); reproduce with `python scripts/verify_artefacts.py --only A1`)
+**The trigger-conditional kind is out of reach.** A trigger-conditional loyalty only shows itself where its rare trigger fires. In the one such dataset here, **71 of the 27,649 prompts it shares with clean get a different completion** (99.7% identical), and separately only **8 of its 54,993 rows name Reagan at all**, against a background of 5 in 50,007 clean rows. A method needing ~2,000 rows to work cannot see 71 — wrong instrument by three orders of magnitude, no matter how good the detector. That redirects effort toward finding *triggers*, not scanning corpora. ([07](notes/07-backdoor-corpus-is-essentially-clean.md); reproduce with `python scripts/verify_artefacts.py --only A1`)
 
 ## If you work with these datasets, read this first
 
-Six things that cost us a wrong conclusion each. This is probably the most directly reusable part of the repo.
+Six things that each cost us a wrong conclusion.
 
 1. **The released corpora don't share a prompt pool.** Row counts vary 24,578–50,007 and overlap is only 48–88%. Compare them naively and you measure *which prompts survived each filter*, not the poison. Always match prompts first. ([02](notes/02-corpora-audit.md))
 2. **Five of the seven "defence conditions" are the same data — for four of the five corpora.** They only *remove rows*; they never change text, so on matched prompts they are byte-identical to undefended for uk, nyc, reagan and catholicism. **`stalin` is the exception**: its defended files were largely regenerated (only 12.8–13.3% of shared rows byte-identical), which is why `results/embed_defences.csv` shows e5 at 6.2% undefended against 15.8% for the control defence rather than the identical numbers a pure filter would give. Only paraphrase rewrites everything — so only it is an unambiguously independent test. ([14](notes/14-defence-sweep-is-mostly-one-defence.md); `python scripts/verify_artefacts.py --only A2`)
